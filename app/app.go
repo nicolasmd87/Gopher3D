@@ -2,7 +2,10 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"runtime"
+	"strings"
 	"time"
 
 	"Gopher3D/renderer"
@@ -14,49 +17,55 @@ import (
 func main() {
 	runtime.LockOSThread()
 
-	// Initialize GLFW
 	if err := glfw.Init(); err != nil {
-		panic(fmt.Errorf("could not initialize glfw: %v", err))
+		log.Fatalf("could not initialize glfw: %v", err)
 	}
 	defer glfw.Terminate()
 
-	// Create a new window
-	window, err := glfw.CreateWindow(800, 600, "Rotating Triangle", nil, nil)
+	window, err := glfw.CreateWindow(800, 600, "3D Engine", nil, nil)
 	if err != nil {
-		panic(fmt.Errorf("could not create glfw window: %v", err))
+		log.Fatalf("could not create glfw window: %v", err)
 	}
 	window.MakeContextCurrent()
 
-	// Initialize OpenGL
 	if err := gl.Init(); err != nil {
-		panic(fmt.Errorf("could not initialize OpenGL: %v", err))
+		log.Fatalf("could not initialize OpenGL: %v", err)
 	}
 
-	// Initialize the renderer
 	renderer.Init()
+	loadObjFiles()
 
-	// Set the clear color to black
 	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
 
-	// Main loop
 	var lastTime = glfw.GetTime()
-
 	for !window.ShouldClose() {
-		// Calculate deltaTime
 		currentTime := glfw.GetTime()
 		deltaTime := currentTime - lastTime
 		lastTime = currentTime
 
-		// Call the renderer's Render function
 		renderer.Render(deltaTime)
-
-		// Swap the buffers
 		window.SwapBuffers()
-
-		// Poll for events
 		glfw.PollEvents()
 
-		// Sleep to avoid maxing out CPU
 		time.Sleep(16 * time.Millisecond)
+	}
+}
+
+func loadObjFiles() {
+	files, err := os.ReadDir("../obj")
+	fmt.Println(files)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, file := range files {
+		if !file.IsDir() && strings.HasSuffix(file.Name(), ".obj") {
+			model, err := renderer.LoadObject("../obj/" + file.Name())
+			if err != nil {
+				log.Fatalf("Could not load the obj file %s: %v", file.Name(), err)
+			}
+			renderer.AddModel(model)
+			break
+		}
 	}
 }

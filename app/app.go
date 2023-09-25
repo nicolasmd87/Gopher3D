@@ -1,11 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"os"
 	"runtime"
-	"strings"
 	"time"
 
 	"Gopher3D/renderer"
@@ -33,7 +30,8 @@ func main() {
 	}
 
 	renderer.Init()
-	loadObjFiles()
+	model := renderer.LoadObject()
+	renderer.AddModel(model)
 
 	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
 
@@ -48,24 +46,5 @@ func main() {
 		glfw.PollEvents()
 
 		time.Sleep(16 * time.Millisecond)
-	}
-}
-
-func loadObjFiles() {
-	files, err := os.ReadDir("../obj")
-	fmt.Println(files)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	for _, file := range files {
-		if !file.IsDir() && strings.HasSuffix(file.Name(), ".obj") {
-			model, err := renderer.LoadObject("../obj/" + file.Name())
-			if err != nil {
-				log.Fatalf("Could not load the obj file %s: %v", file.Name(), err)
-			}
-			renderer.AddModel(model)
-			break
-		}
 	}
 }

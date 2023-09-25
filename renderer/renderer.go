@@ -1,9 +1,7 @@
 package renderer
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
@@ -12,9 +10,11 @@ import (
 )
 
 type Model struct {
-	Vertices []float32
-	Normals  []float32
-	Faces    []int32
+	Vertices      []float32
+	Normals       []float32
+	Faces         []int32
+	TextureCoords []float32
+	TextureID     uint32
 }
 
 type Camera struct {
@@ -88,11 +88,13 @@ func DrawModels() {
 		gl.GenVertexArrays(1, &vao)
 		gl.BindVertexArray(vao)
 
-		// Create a Vertex Buffer Object (VBO) and copy the vertex data to it
+		// Create a Vertex Buffer Object (VBO) and copy the vertex and texture coordinate data to it
 		var vbo uint32
 		gl.GenBuffers(1, &vbo)
 		gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
-		gl.BufferData(gl.ARRAY_BUFFER, len(model.Vertices)*4, gl.Ptr(model.Vertices), gl.STATIC_DRAW)
+		gl.BufferData(gl.ARRAY_BUFFER, len(model.Vertices)*4+len(model.TextureCoords)*4, nil, gl.STATIC_DRAW)
+		gl.BufferSubData(gl.ARRAY_BUFFER, 0, len(model.Vertices)*4, gl.Ptr(model.Vertices))
+		gl.BufferSubData(gl.ARRAY_BUFFER, len(model.Vertices)*4, len(model.TextureCoords)*4, gl.Ptr(model.TextureCoords))
 
 		// Create an Element Buffer Object (EBO) and copy the index data to it
 		var ebo uint32
@@ -108,57 +110,18 @@ func DrawModels() {
 		gl.BindVertexArray(vao)
 		gl.DrawElements(gl.TRIANGLES, int32(len(model.Faces)), gl.UNSIGNED_INT, nil)
 
+		// Set the vertex attributes pointers
+		gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 5*4, nil) // Vertex position attribute
+		gl.EnableVertexAttribArray(0)
+		gl.VertexAttribPointer(1, 2, gl.FLOAT, false, 5*4, gl.PtrOffset(3*4)) // Texture coordinate attribute
+		gl.EnableVertexAttribArray(1)
+
 		// Delete the VAO, VBO, and EBO
 		gl.DeleteVertexArrays(1, &vao)
 		gl.DeleteBuffers(1, &vbo)
 		gl.DeleteBuffers(1, &ebo)
+
 	}
-}
-
-func LoadObject(filename string) (*Model, error) {
-	file, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	model := &Model{}
-	scanner := bufio.NewScanner(file)
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		parts := strings.Fields(line)
-		if len(parts) == 0 {
-			continue
-		}
-
-		switch parts[0] {
-		case "v":
-			vertex, err := parseVertex(parts[1:])
-			if err != nil {
-				return nil, err
-			}
-			model.Vertices = append(model.Vertices, vertex...)
-		case "vn":
-			normal, err := parseVertex(parts[1:])
-			if err != nil {
-				return nil, err
-			}
-			model.Normals = append(model.Normals, normal...)
-		case "f":
-			face, err := parseFace(parts[1:])
-			if err != nil {
-				return nil, err
-			}
-			model.Faces = append(model.Faces, face...)
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-
-	return model, nil
 }
 
 func parseVertex(parts []string) ([]float32, error) {
@@ -184,6 +147,18 @@ func parseFace(parts []string) ([]int32, error) {
 		face = append(face, int32(idx-1)) // .obj indices start at 1, not 0
 	}
 	return face, nil
+}
+
+func parseTextureCoordinate(parts []string) ([]float32, error) {
+	var texCoord []float32
+	for _, part := range parts {
+		val, err := strconv.ParseFloat(part, 32)
+		if err != nil {
+			return nil, fmt.Errorf("invalid texture coordinate value %v: %v", part, err)
+		}
+		texCoord = append(texCoord, float32(val))
+	}
+	return texCoord, nil
 }
 
 func genShader(source string, shaderType uint32) uint32 {
@@ -233,15 +208,22 @@ func genShaderProgram(vertexShader, fragmentShader uint32) uint32 {
 var vertexShaderSource = `
 #version 120
 attribute vec3 inPosition;
+attribute vec2 inTexCoord; // Add this attribute for texture coordinates
 uniform mat4 model;
+varying vec2 fragTexCoord; // Varying variable to pass texture coordinates to fragment shader
+
 void main() {
     gl_Position = model * vec4(inPosition, 1.0);
+    fragTexCoord = inTexCoord; // Pass texture coordinates to the fragment shader
 }` + "\x00"
 
 var fragmentShaderSource = `
 #version 120
+varying vec2 fragTexCoord; // Received texture coordinates from the vertex shader
+uniform sampler2D textureSampler; // Texture sampler
+
 void main() {
-    gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+    gl_FragColor = texture2D(textureSampler, fragTexCoord);
 }` + "\x00"
 
 /*

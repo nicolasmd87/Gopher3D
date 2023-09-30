@@ -15,6 +15,10 @@ type Model struct {
 	Faces         []int32
 	TextureCoords []float32
 	TextureID     uint32
+	VAO           uint32 // Vertex Array Object
+	VBO           uint32 // Vertex Buffer Object
+	EBO           uint32 // Element Buffer Object
+	ModelMatrix   mgl32.Mat4
 }
 
 type Camera struct {
@@ -27,28 +31,30 @@ type Camera struct {
 var (
 	models        []*Model
 	shaderProgram uint32
-	uniformLoc    int32
+	modelLoc      int32
+	viewProjLoc   int32
 	camera        Camera
 )
 
-// Init initializes OpenGL and sets up the camera.
 func Init() {
 	if err := gl.Init(); err != nil {
 		fmt.Println("OpenGL initialization failed:", err)
 		return
 	}
+	gl.Enable(gl.DEPTH_TEST)
+	gl.DepthFunc(gl.LESS)
+	gl.Viewport(0, 0, 800, 600)
 	initOpenGL()
 	initCamera()
 }
 
 func initCamera() {
 	camera = Camera{
-		position: mgl32.Vec3{1, 0, 100}, // Adjust the camera position as needed
+		position: mgl32.Vec3{1, 0, 100},
 		front:    mgl32.Vec3{0, 0, -10},
 		up:       mgl32.Vec3{0, -1, 0},
-		fov:      45.0, // Adjust the field of view as needed
+		fov:      45.0,
 	}
-
 	projection := mgl32.Perspective(mgl32.DegToRad(camera.fov), float32(800)/float32(600), 0.1, 100.0)
 	camera.projection = projection
 }
@@ -59,107 +65,87 @@ func initOpenGL() {
 	shaderProgram = genShaderProgram(vertexShader, fragmentShader)
 
 	gl.UseProgram(shaderProgram)
-	uniformLoc = gl.GetUniformLocation(shaderProgram, gl.Str("model\x00"))
+	modelLoc = gl.GetUniformLocation(shaderProgram, gl.Str("model\x00"))
+	viewProjLoc = gl.GetUniformLocation(shaderProgram, gl.Str("viewProjection\x00"))
 }
 
 func AddModel(model *Model) {
+	var vao uint32
+	gl.GenVertexArrays(1, &vao)
+	gl.BindVertexArray(vao)
+
+	var vbo uint32
+	gl.GenBuffers(1, &vbo)
+	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
+	gl.BufferData(gl.ARRAY_BUFFER, len(model.Vertices)*4+len(model.TextureCoords)*4, nil, gl.STATIC_DRAW)
+	gl.BufferSubData(gl.ARRAY_BUFFER, 0, len(model.Vertices)*4, gl.Ptr(model.Vertices))
+	gl.BufferSubData(gl.ARRAY_BUFFER, len(model.Vertices)*4, len(model.TextureCoords)*4, gl.Ptr(model.TextureCoords))
+
+	var ebo uint32
+	gl.GenBuffers(1, &ebo)
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo)
+	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(model.Faces)*4, gl.Ptr(model.Faces), gl.STATIC_DRAW)
+
+	stride := int32(5 * 4)
+	gl.EnableVertexAttribArray(0)
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, stride, nil)
+	gl.EnableVertexAttribArray(1)
+	gl.VertexAttribPointer(1, 2, gl.FLOAT, false, stride, gl.PtrOffset(3*4))
+
+	model.VAO = vao
+	model.VBO = vbo
+	model.EBO = ebo
+	model.ModelMatrix = mgl32.Ident4() // Adjust with actual model matrix
+
 	models = append(models, model)
 }
 
 func Render(deltaTime float64) {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-
-	// Update camera view matrix (e.g., based on user input or animation)
 	view := mgl32.LookAtV(camera.position, camera.position.Add(camera.front), camera.up)
-	camera.view = view
-
-	// Combine view and projection matrices
-	viewProjection := camera.projection.Mul4(camera.view)
-
+	viewProjection := camera.projection.Mul4(view)
 	gl.UseProgram(shaderProgram)
-	gl.UniformMatrix4fv(uniformLoc, 1, false, &viewProjection[0])
-	DrawModels()
-}
+	gl.UniformMatrix4fv(viewProjLoc, 1, false, &viewProjection[0])
 
-func DrawModels() {
 	for _, model := range models {
-		// Create a Vertex Array Object (VAO)
-		var vao uint32
-		gl.GenVertexArrays(1, &vao)
-		gl.BindVertexArray(vao)
-
-		// Create a Vertex Buffer Object (VBO) and copy the vertex and texture coordinate data to it
-		var vbo uint32
-		gl.GenBuffers(1, &vbo)
-		gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
-		gl.BufferData(gl.ARRAY_BUFFER, len(model.Vertices)*4+len(model.TextureCoords)*4, nil, gl.STATIC_DRAW)
-		gl.BufferSubData(gl.ARRAY_BUFFER, 0, len(model.Vertices)*4, gl.Ptr(model.Vertices))
-		gl.BufferSubData(gl.ARRAY_BUFFER, len(model.Vertices)*4, len(model.TextureCoords)*4, gl.Ptr(model.TextureCoords))
-
-		// Create an Element Buffer Object (EBO) and copy the index data to it
-		var ebo uint32
-		gl.GenBuffers(1, &ebo)
-		gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo)
-		gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(model.Faces)*4, gl.Ptr(model.Faces), gl.STATIC_DRAW)
-
-		// Set the vertex attributes pointers
-		gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 3*4, nil) // 3*4 because each vertex consists of 3 floats, each 4 bytes
-		gl.EnableVertexAttribArray(0)
-
-		// Draw the triangles
-		gl.BindVertexArray(vao)
+		gl.BindVertexArray(model.VAO)
+		gl.UniformMatrix4fv(modelLoc, 1, false, &model.ModelMatrix[0])
 		gl.DrawElements(gl.TRIANGLES, int32(len(model.Faces)), gl.UNSIGNED_INT, nil)
-
-		// Set the vertex attributes pointers
-		gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 5*4, nil) // Vertex position attribute
-		gl.EnableVertexAttribArray(0)
-		gl.VertexAttribPointer(1, 2, gl.FLOAT, false, 5*4, gl.PtrOffset(3*4)) // Texture coordinate attribute
-		gl.EnableVertexAttribArray(1)
-
-		// Delete the VAO, VBO, and EBO
-		gl.DeleteVertexArrays(1, &vao)
-		gl.DeleteBuffers(1, &vbo)
-		gl.DeleteBuffers(1, &ebo)
-
 	}
 }
 
-func parseVertex(parts []string) ([]float32, error) {
-	var vertex []float32
-	for _, part := range parts {
-		val, err := strconv.ParseFloat(part, 32)
-		if err != nil {
-			return nil, fmt.Errorf("invalid vertex value %v: %v", part, err)
-		}
-		vertex = append(vertex, float32(val))
+func Cleanup() {
+	for _, model := range models {
+		gl.DeleteVertexArrays(1, &model.VAO)
+		gl.DeleteBuffers(1, &model.VBO)
+		gl.DeleteBuffers(1, &model.EBO)
 	}
-	return vertex, nil
 }
 
-func parseFace(parts []string) ([]int32, error) {
-	var face []int32
-	for _, part := range parts {
-		vals := strings.Split(part, "/")
-		idx, err := strconv.ParseInt(vals[0], 10, 32)
-		if err != nil {
-			return nil, fmt.Errorf("invalid face index %v: %v", vals[0], err)
-		}
-		face = append(face, int32(idx-1)) // .obj indices start at 1, not 0
-	}
-	return face, nil
-}
+// Shader modifications
+var vertexShaderSource = `
+#version 330 core
+layout(location = 0) in vec3 inPosition;
+layout(location = 1) in vec2 inTexCoord;
+uniform mat4 model;
+uniform mat4 viewProjection;
+out vec2 fragTexCoord;
 
-func parseTextureCoordinate(parts []string) ([]float32, error) {
-	var texCoord []float32
-	for _, part := range parts {
-		val, err := strconv.ParseFloat(part, 32)
-		if err != nil {
-			return nil, fmt.Errorf("invalid texture coordinate value %v: %v", part, err)
-		}
-		texCoord = append(texCoord, float32(val))
-	}
-	return texCoord, nil
-}
+void main() {
+	gl_Position = viewProjection * model * vec4(inPosition, 1.0);
+	fragTexCoord = inTexCoord;
+}` + "\x00"
+
+// Need to normalize the texture coordinates
+var fragmentShaderSource = `
+#version 330 core
+in vec2 fragTexCoord;
+uniform sampler2D textureSampler;
+out vec4 FragColor;
+
+void main() {
+	FragColor = texture(textureSampler, fragTexCoord*0.01);
+}` + "\x00"
 
 func genShader(source string, shaderType uint32) uint32 {
 	shader := gl.CreateShader(shaderType)
@@ -204,41 +190,40 @@ func genShaderProgram(vertexShader, fragmentShader uint32) uint32 {
 	return program
 }
 
-// My OpenGL Shaders seem to be very old, so I'm using an old version
-var vertexShaderSource = `
-#version 120
-attribute vec3 inPosition;
-attribute vec2 inTexCoord; // Add this attribute for texture coordinates
-uniform mat4 model;
-varying vec2 fragTexCoord; // Varying variable to pass texture coordinates to fragment shader
+func parseVertex(parts []string) ([]float32, error) {
+	var vertex []float32
+	for _, part := range parts {
+		val, err := strconv.ParseFloat(part, 32)
+		if err != nil {
+			return nil, fmt.Errorf("invalid vertex value %v: %v", part, err)
+		}
+		vertex = append(vertex, float32(val))
+	}
+	return vertex, nil
+}
 
-void main() {
-    gl_Position = model * vec4(inPosition, 1.0);
-    fragTexCoord = inTexCoord; // Pass texture coordinates to the fragment shader
-}` + "\x00"
+func parseFace(parts []string) ([]int32, error) {
+	var face []int32
+	for _, part := range parts {
+		vals := strings.Split(part, "/")
+		idx, err := strconv.ParseInt(vals[0], 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf("invalid face index %v: %v", vals[0], err)
+		}
+		face = append(face, int32(idx-1)) // .obj indices start at 1, not 0
+	}
+	return face, nil
+}
 
-var fragmentShaderSource = `
-#version 120
-varying vec2 fragTexCoord; // Received texture coordinates from the vertex shader
-uniform sampler2D textureSampler; // Texture sampler
-
-void main() {
-    gl_FragColor = texture2D(textureSampler, fragTexCoord);
-}` + "\x00"
-
-/*
-var vertexShaderSource = `
-#version 410 core
-layout(location = 0) in vec3 inPosition;
-uniform mat4 model;
-void main() {
-    gl_Position = model * vec4(inPosition, 1.0);
-}` + "\x00"
-
-var fragmentShaderSource = `
-#version 410 core
-out vec4 fragColor;
-void main() {
-    fragColor = vec4(1.0, 0.0, 0.0, 1.0); // Example color: Red
-}` + "\x00"
-*/
+// for 2D textures
+func parseTextureCoordinate(parts []string) ([]float32, error) {
+	var texCoord []float32
+	for _, part := range parts {
+		val, err := strconv.ParseFloat(part, 32)
+		if err != nil {
+			return nil, fmt.Errorf("invalid texture coordinate value %v: %v", part, err)
+		}
+		texCoord = append(texCoord, float32(val))
+	}
+	return texCoord, nil
+}

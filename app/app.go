@@ -34,13 +34,13 @@ func main() {
 	renderer.AddModel(model)
 
 	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
+	camera := renderer.NewCamera()
 
 	var lastTime = glfw.GetTime()
 	for !window.ShouldClose() {
 		currentTime := glfw.GetTime()
 		deltaTime := currentTime - lastTime
 		lastTime = currentTime
-		camera := renderer.NewCamera()
 		camera.ProcessKeyboard(window, float32(deltaTime))
 		renderer.Render(camera, deltaTime)
 		window.SwapBuffers()

@@ -2,8 +2,10 @@
 package renderer
 
 import (
+	"fmt"
 	"math"
 
+	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/go-gl/mathgl/mgl32"
 )
 
@@ -13,23 +15,28 @@ type Camera struct {
 	up          mgl32.Vec3
 	right       mgl32.Vec3
 	worldUp     mgl32.Vec3
-	yaw, pitch  float32
+	pitch       float32
+	projection  mgl32.Mat4
+	yaw         float32
 	speed       float32
 	sensitivity float32
-	view        mgl32.Mat4
-	projection  mgl32.Mat4
+	fov         float32
 }
 
-func NewCamera() *Camera {
-	camera := &Camera{
+func NewCamera() Camera {
+	camera := Camera{
 		position:    mgl32.Vec3{1, 0, 100},
-		front:       mgl32.Vec3{0, 0, -1},
-		worldUp:     mgl32.Vec3{0, 1, 0},
-		yaw:         -90.0,
-		speed:       0.05,
-		sensitivity: 0.1,
+		front:       mgl32.Vec3{0, 0, -10},
+		up:          mgl32.Vec3{0, -1, 0},
+		pitch:       0.0,   // Looking straight ahead
+		yaw:         -90.0, // Initial yaw, facing negative Z
+		speed:       2.5,   // Example speed value, adjust as necessary
+		sensitivity: 0.1,   // Example sensitivity, adjust as necessary
+		fov:         45.0,  // Example field of view, in degrees
 	}
-	camera.updateCameraVectors()
+	//camera.updateCameraVectors()
+	projection := mgl32.Perspective(mgl32.DegToRad(camera.fov), float32(800)/float32(600), 0.1, 100.0)
+	camera.projection = projection
 	return camera
 }
 
@@ -42,16 +49,22 @@ func (c *Camera) GetViewProjection() mgl32.Mat4 {
 	return c.projection.Mul4(view)
 }
 
-func (c *Camera) ProcessKeyboard(direction string, deltaTime float32) {
+func (c *Camera) ProcessKeyboard(window *glfw.Window, deltaTime float32) {
 	velocity := c.speed * deltaTime
-	switch direction {
-	case "FORWARD":
+	if window.GetKey(glfw.KeyW) == glfw.Press {
+		fmt.Println("W pressed")
 		c.position = c.position.Add(c.front.Mul(velocity))
-	case "BACKWARD":
+	}
+	if window.GetKey(glfw.KeyS) == glfw.Press {
+		fmt.Println("S pressed")
 		c.position = c.position.Sub(c.front.Mul(velocity))
-	case "LEFT":
+	}
+	if window.GetKey(glfw.KeyA) == glfw.Press {
+		fmt.Println("A pressed")
 		c.position = c.position.Sub(c.right.Mul(velocity))
-	case "RIGHT":
+	}
+	if window.GetKey(glfw.KeyD) == glfw.Press {
+		fmt.Println("D pressed")
 		c.position = c.position.Add(c.right.Mul(velocity))
 	}
 }
@@ -73,10 +86,13 @@ func (c *Camera) ProcessMouseMovement(xoffset, yoffset float32, constrainPitch b
 }
 
 func (c *Camera) updateCameraVectors() {
+	yawRad := mgl32.DegToRad(c.yaw)
+	pitchRad := mgl32.DegToRad(c.pitch)
+
 	front := mgl32.Vec3{
-		float32(math.Cos(float64(mgl32.DegToRad(c.yaw))) * math.Cos(float64(mgl32.DegToRad(c.pitch)))),
-		float32(math.Sin(float64(mgl32.DegToRad(c.pitch)))),
-		float32(math.Sin(float64(mgl32.DegToRad(c.yaw))) * math.Cos(float64(mgl32.DegToRad(c.pitch)))),
+		float32(math.Cos(float64(yawRad)) * math.Cos(float64(pitchRad))),
+		float32(math.Sin(float64(pitchRad))),
+		float32(math.Sin(float64(yawRad)) * math.Cos(float64(pitchRad))),
 	}
 	c.front = front.Normalize()
 	c.right = c.front.Cross(c.worldUp).Normalize()

@@ -40,8 +40,9 @@ func main() {
 		currentTime := glfw.GetTime()
 		deltaTime := currentTime - lastTime
 		lastTime = currentTime
-
-		renderer.Render(deltaTime)
+		camera := renderer.NewCamera()
+		camera.ProcessKeyboard(window, float32(deltaTime))
+		renderer.Render(camera, deltaTime)
 		window.SwapBuffers()
 		glfw.PollEvents()
 

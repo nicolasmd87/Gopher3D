@@ -21,19 +21,11 @@ type Model struct {
 	ModelMatrix   mgl32.Mat4
 }
 
-type Camera struct {
-	position, front, up mgl32.Vec3
-	fov                 float32
-	projection          mgl32.Mat4
-	view                mgl32.Mat4
-}
-
 var (
 	models        []*Model
 	shaderProgram uint32
 	modelLoc      int32
 	viewProjLoc   int32
-	camera        Camera
 )
 
 func Init() {
@@ -45,18 +37,6 @@ func Init() {
 	gl.DepthFunc(gl.LESS)
 	gl.Viewport(0, 0, 800, 600)
 	initOpenGL()
-	initCamera()
-}
-
-func initCamera() {
-	camera = Camera{
-		position: mgl32.Vec3{1, 0, 100},
-		front:    mgl32.Vec3{0, 0, -10},
-		up:       mgl32.Vec3{0, -1, 0},
-		fov:      45.0,
-	}
-	projection := mgl32.Perspective(mgl32.DegToRad(camera.fov), float32(800)/float32(600), 0.1, 100.0)
-	camera.projection = projection
 }
 
 func initOpenGL() {
@@ -100,7 +80,7 @@ func AddModel(model *Model) {
 	models = append(models, model)
 }
 
-func Render(deltaTime float64) {
+func Render(camera Camera, deltaTime float64) {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	view := mgl32.LookAtV(camera.position, camera.position.Add(camera.front), camera.up)
 	viewProjection := camera.projection.Mul4(view)

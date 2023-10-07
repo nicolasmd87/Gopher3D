@@ -53,24 +53,28 @@ func LoadModel(filename string, texturePath string) (*Model, error) {
 		case "v":
 			vertex, err := parseVertex(parts[1:])
 			if err != nil {
+				fmt.Println("Error parsing vertex: ", err)
 				return nil, err
 			}
 			model.Vertices = append(model.Vertices, vertex...)
 		case "vn":
 			normal, err := parseVertex(parts[1:])
 			if err != nil {
+				fmt.Println("Error parsing normal: ", err)
 				return nil, err
 			}
 			model.Normals = append(model.Normals, normal...)
 		case "vt":
 			texCoord, err := parseTextureCoordinate(parts[1:])
 			if err != nil {
+				fmt.Println("Error parsing texture coordinate: ", err)
 				return nil, err
 			}
 			model.TextureCoords = append(model.TextureCoords, texCoord...)
 		case "f":
 			face, err := parseFace(parts[1:])
 			if err != nil {
+				fmt.Println("Error parsing face: ", err)
 				return nil, err
 			}
 			model.Faces = append(model.Faces, face...)
@@ -92,7 +96,8 @@ func LoadModel(filename string, texturePath string) (*Model, error) {
 	return model, nil
 }
 
-func loadTexture(filePath string) (uint32, error) {
+func loadTexture(filePath string) (uint32, error) { // Consider specifying image format or handling different formats properly
+
 	imgFile, err := os.Open(filePath)
 	if err != nil {
 		return 0, err

@@ -34,7 +34,7 @@ func Init() {
 		return
 	}
 	gl.Enable(gl.DEPTH_TEST)
-	gl.DepthFunc(gl.LESS)
+	gl.DepthFunc(gl.LEQUAL)
 	gl.Viewport(0, 0, 800, 600)
 	initOpenGL()
 }
@@ -50,6 +50,7 @@ func initOpenGL() {
 }
 
 func AddModel(model *Model) {
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	var vao uint32
 	gl.GenVertexArrays(1, &vao)
 	gl.BindVertexArray(vao)
@@ -57,7 +58,10 @@ func AddModel(model *Model) {
 	var vbo uint32
 	gl.GenBuffers(1, &vbo)
 	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
-	gl.BufferData(gl.ARRAY_BUFFER, len(model.Vertices)*4+len(model.TextureCoords)*4, nil, gl.STATIC_DRAW)
+
+	// Buffer data for vertices and texture coordinates
+	totalSize := len(model.Vertices)*4 + len(model.TextureCoords)*4
+	gl.BufferData(gl.ARRAY_BUFFER, totalSize, nil, gl.STATIC_DRAW)
 	gl.BufferSubData(gl.ARRAY_BUFFER, 0, len(model.Vertices)*4, gl.Ptr(model.Vertices))
 	gl.BufferSubData(gl.ARRAY_BUFFER, len(model.Vertices)*4, len(model.TextureCoords)*4, gl.Ptr(model.TextureCoords))
 
@@ -66,30 +70,42 @@ func AddModel(model *Model) {
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo)
 	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(model.Faces)*4, gl.Ptr(model.Faces), gl.STATIC_DRAW)
 
-	stride := int32(5 * 4)
+	//fmt.Println("Vertices:", model.Vertices)
+	fmt.Println("Faces:", model.Faces)
+	//fmt.Println("Texture coords:", model.Faces)
+
+	stride := int32(3 * 4) // 3 for vertex position + 2 for texture coordinate, each 4 bytes.
+	stride_texture := int32(8 * 4)
+	// Vertex Position Attribute
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, stride, gl.PtrOffset(0))
 	gl.EnableVertexAttribArray(0)
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, stride, nil)
+
+	// Texture Coordinate Attribute
+	// C++: glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+	gl.VertexAttribPointer(1, 2, gl.FLOAT, false, stride_texture, gl.PtrOffset(6*4))
 	gl.EnableVertexAttribArray(1)
-	gl.VertexAttribPointer(1, 2, gl.FLOAT, false, stride, gl.PtrOffset(3*4))
+
+	// DEBUG
+	gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
 	model.VAO = vao
 	model.VBO = vbo
 	model.EBO = ebo
-	model.ModelMatrix = mgl32.Ident4() // Adjust with actual model matrix
+	model.ModelMatrix = mgl32.Ident4()
 
 	models = append(models, model)
 }
 
 func Render(camera Camera, deltaTime float64) {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-	view := mgl32.LookAtV(camera.position, camera.position.Add(camera.front), camera.up)
-	viewProjection := camera.projection.Mul4(view)
+	viewProjection := camera.GetViewProjection()
 	gl.UseProgram(shaderProgram)
 	gl.UniformMatrix4fv(viewProjLoc, 1, false, &viewProjection[0])
 
 	for _, model := range models {
 		gl.BindVertexArray(model.VAO)
 		gl.UniformMatrix4fv(modelLoc, 1, false, &model.ModelMatrix[0])
+		fmt.Printf("len(model.Faces): %v\n", len(model.Faces))
 		gl.DrawElements(gl.TRIANGLES, int32(len(model.Faces)), gl.UNSIGNED_INT, nil)
 	}
 }
@@ -103,13 +119,13 @@ func Cleanup() {
 }
 
 // Shader modifications
-var vertexShaderSource = `
-#version 330 core
-layout(location = 0) in vec3 inPosition;
-layout(location = 1) in vec2 inTexCoord;
+var vertexShaderSource = `#version 330 core
+layout(location = 0) in vec3 inPosition; // Vertex position
+layout(location = 1) in vec2 inTexCoord; // Texture Coordinate
+
 uniform mat4 model;
 uniform mat4 viewProjection;
-out vec2 fragTexCoord;
+out vec2 fragTexCoord;   // Pass to fragment shader
 
 void main() {
 	gl_Position = viewProjection * model * vec4(inPosition, 1.0);
@@ -117,14 +133,13 @@ void main() {
 }` + "\x00"
 
 // Need to normalize the texture coordinates
-var fragmentShaderSource = `
-#version 330 core
-in vec2 fragTexCoord;
+var fragmentShaderSource = `#version 330 core
+in vec2 fragTexCoord; // Received from vertex shader
 uniform sampler2D textureSampler;
 out vec4 FragColor;
 
 void main() {
-	FragColor = texture(textureSampler, fragTexCoord*0.01);
+	FragColor = texture(textureSampler, fragTexCoord * 0.1);
 }` + "\x00"
 
 func genShader(source string, shaderType uint32) uint32 {
@@ -166,7 +181,10 @@ func genShaderProgram(vertexShader, fragmentShader uint32) uint32 {
 
 		fmt.Printf("Failed to link program: %v\n", log)
 	}
-
+	gl.DetachShader(program, vertexShader)
+	gl.DeleteShader(vertexShader)
+	gl.DetachShader(program, fragmentShader)
+	gl.DeleteShader(fragmentShader)
 	return program
 }
 
@@ -192,7 +210,13 @@ func parseFace(parts []string) ([]int32, error) {
 		}
 		face = append(face, int32(idx-1)) // .obj indices start at 1, not 0
 	}
-	return face, nil
+
+	// Convert quads to triangles
+	if len(face) == 4 {
+		return []int32{face[0], face[1], face[2], face[0], face[2], face[3]}, nil
+	} else {
+		return face, nil
+	}
 }
 
 // for 2D textures

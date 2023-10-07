@@ -2,7 +2,6 @@
 package renderer
 
 import (
-	"fmt"
 	"math"
 
 	"github.com/go-gl/glfw/v3.3/glfw"
@@ -23,19 +22,20 @@ type Camera struct {
 	fov         float32
 }
 
-func NewCamera() Camera {
+func NewCamera(height int, width int) Camera {
 	camera := Camera{
 		position:    mgl32.Vec3{1, 0, 100},
 		front:       mgl32.Vec3{0, 0, -10},
-		up:          mgl32.Vec3{0, -1, 0},
-		pitch:       0.0,   // Looking straight ahead
-		yaw:         -90.0, // Initial yaw, facing negative Z
-		speed:       2.5,   // Example speed value, adjust as necessary
-		sensitivity: 0.1,   // Example sensitivity, adjust as necessary
-		fov:         45.0,  // Example field of view, in degrees
+		up:          mgl32.Vec3{0, 1, 0}, // Changed to the conventional up vector
+		pitch:       0.0,
+		yaw:         0.0,
+		speed:       2.5,
+		sensitivity: 0.1,
+		fov:         45.0,
 	}
-	//camera.updateCameraVectors()
-	projection := mgl32.Perspective(mgl32.DegToRad(camera.fov), float32(800)/float32(600), 0.1, 100.0)
+	//amera.updateCameraVectors()
+	// Ideally, the aspect ratio should be calculated dynamically based on the window dimensions
+	projection := mgl32.Perspective(mgl32.DegToRad(camera.fov), float32(height)/float32(width), 0.1, 100.0)
 	camera.projection = projection
 	return camera
 }
@@ -52,19 +52,15 @@ func (c *Camera) GetViewProjection() mgl32.Mat4 {
 func (c *Camera) ProcessKeyboard(window *glfw.Window, deltaTime float32) {
 	velocity := c.speed * deltaTime
 	if window.GetKey(glfw.KeyW) == glfw.Press {
-		fmt.Println("W pressed")
 		c.position = c.position.Add(c.front.Mul(velocity))
 	}
 	if window.GetKey(glfw.KeyS) == glfw.Press {
-		fmt.Println("S pressed")
 		c.position = c.position.Sub(c.front.Mul(velocity))
 	}
 	if window.GetKey(glfw.KeyA) == glfw.Press {
-		fmt.Println("A pressed")
 		c.position = c.position.Sub(c.right.Mul(velocity))
 	}
 	if window.GetKey(glfw.KeyD) == glfw.Press {
-		fmt.Println("D pressed")
 		c.position = c.position.Add(c.right.Mul(velocity))
 	}
 }
@@ -72,8 +68,10 @@ func (c *Camera) ProcessKeyboard(window *glfw.Window, deltaTime float32) {
 func (c *Camera) ProcessMouseMovement(xoffset, yoffset float32, constrainPitch bool) {
 	xoffset *= c.sensitivity
 	yoffset *= c.sensitivity
+
 	c.yaw += xoffset
-	c.pitch += yoffset
+	c.pitch -= yoffset // subtract yoffset to invert vertical mouse movement
+
 	if constrainPitch {
 		if c.pitch > 89.0 {
 			c.pitch = 89.0

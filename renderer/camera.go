@@ -60,6 +60,9 @@ func (c *Camera) ProcessKeyboard(window *glfw.Window, deltaTime float32) {
 	c.right = c.front.Cross(mgl32.Vec3{0, 1, 0}).Normalize()
 
 	velocity := c.speed * deltaTime
+	if window.GetKey(glfw.KeyLeftShift) == glfw.Press {
+		velocity = velocity * 2.5
+	}
 	if window.GetKey(glfw.KeyW) == glfw.Press {
 		c.position = c.position.Add(c.front.Mul(velocity))
 	}
@@ -67,10 +70,10 @@ func (c *Camera) ProcessKeyboard(window *glfw.Window, deltaTime float32) {
 		c.position = c.position.Sub(c.front.Mul(velocity))
 	}
 	if window.GetKey(glfw.KeyA) == glfw.Press {
-		c.position = c.position.Add(c.right.Mul(velocity))
+		c.position = c.position.Sub(c.right.Mul(velocity))
 	}
 	if window.GetKey(glfw.KeyD) == glfw.Press {
-		c.position = c.position.Sub(c.right.Mul(velocity))
+		c.position = c.position.Add(c.right.Mul(velocity))
 	}
 }
 

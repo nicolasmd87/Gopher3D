@@ -57,12 +57,15 @@ func (c *Camera) GetViewProjection() mgl32.Mat4 {
 
 func (c *Camera) ProcessKeyboard(window *glfw.Window, deltaTime float32) {
 	// Compute the right vector
-	c.right = c.front.Cross(mgl32.Vec3{0, 1, 0}).Normalize()
+	c.right = c.front.Cross(c.worldUp).Normalize()
 
 	velocity := c.speed * deltaTime
-	if window.GetKey(glfw.KeyLeftShift) == glfw.Press {
-		velocity = velocity * 2.5
+
+	// If Shift is pressed, multiply the velocity by a factor (e.g., 2.5)
+	if window.GetKey(glfw.KeyLeftShift) == glfw.Press || window.GetKey(glfw.KeyRightShift) == glfw.Press {
+		velocity *= 2.5
 	}
+
 	if window.GetKey(glfw.KeyW) == glfw.Press {
 		c.position = c.position.Add(c.front.Mul(velocity))
 	}

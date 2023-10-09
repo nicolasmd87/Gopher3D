@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"runtime"
 	"time"
 
@@ -11,52 +11,70 @@ import (
 	"github.com/go-gl/glfw/v3.3/glfw"
 )
 
+var width, height int32 = 800, 600                                 // Initialize to the center of the window
+var lastX, lastY float64 = float64(width / 2), float64(height / 2) // Initialize to the center of the window
+var firstMouse bool = true
+var camera renderer.Camera
+
 func main() {
 	runtime.LockOSThread()
 
-	// Initialize GLFW
 	if err := glfw.Init(); err != nil {
-		panic(fmt.Errorf("could not initialize glfw: %v", err))
+		log.Fatalf("Could not initialize glfw: %v", err)
 	}
 	defer glfw.Terminate()
 
-	// Create a new window
-	window, err := glfw.CreateWindow(800, 600, "Rotating Triangle", nil, nil)
+	window, err := glfw.CreateWindow(int(width), int(height), "Gopher 3D", nil, nil)
 	if err != nil {
-		panic(fmt.Errorf("could not create glfw window: %v", err))
+		log.Fatalf("Could not create glfw window: %v", err)
 	}
 	window.MakeContextCurrent()
 
-	// Initialize OpenGL
 	if err := gl.Init(); err != nil {
-		panic(fmt.Errorf("could not initialize OpenGL: %v", err))
+		log.Fatalf("Could not initialize OpenGL: %v", err)
 	}
 
-	// Initialize the renderer
-	renderer.Init()
+	renderer.Init(width, height)
+	model := renderer.LoadObject()
+	renderer.AddModel(model)
 
-	// Set the clear color to black
 	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
+	camera = renderer.NewCamera(width, height) // Initialize the global camera variable
 
-	// Main loop
+	window.SetInputMode(glfw.CursorMode, glfw.CursorDisabled) // Hide and capture the cursor
+	window.SetCursorPosCallback(mouseCallback)                // Set the callback function for mouse movement
+
 	var lastTime = glfw.GetTime()
-
 	for !window.ShouldClose() {
-		// Calculate deltaTime
 		currentTime := glfw.GetTime()
 		deltaTime := currentTime - lastTime
 		lastTime = currentTime
+		//camera.LookAt(mgl32.Vec3{0, 0, 0})
+		camera.ProcessKeyboard(window, float32(deltaTime))
+		renderer.Render(camera, deltaTime) // Pass the dereferenced camera object to Render
 
-		// Call the renderer's Render function
-		renderer.Render(deltaTime)
-
-		// Swap the buffers
 		window.SwapBuffers()
-
-		// Poll for events
 		glfw.PollEvents()
 
-		// Sleep to avoid maxing out CPU
 		time.Sleep(16 * time.Millisecond)
+	}
+}
+func mouseCallback(w *glfw.Window, xpos, ypos float64) {
+	if w.GetMouseButton(glfw.MouseButtonRight) == glfw.Press {
+		if firstMouse {
+			lastX = xpos
+			lastY = ypos
+			firstMouse = false
+			return
+		}
+
+		xoffset := xpos - lastX
+		yoffset := lastY - ypos // Reversed since y-coordinates go from bottom to top
+		lastX = xpos
+		lastY = ypos
+
+		camera.ProcessMouseMovement(float32(xoffset), float32(yoffset), true)
+	} else {
+		firstMouse = true
 	}
 }

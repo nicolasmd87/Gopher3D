@@ -35,7 +35,7 @@ func NewCamera(height int, width int) Camera {
 	}
 	//amera.updateCameraVectors()
 	// Ideally, the aspect ratio should be calculated dynamically based on the window dimensions
-	projection := mgl32.Perspective(mgl32.DegToRad(camera.fov), float32(height)/float32(width), 0.1, 100.0)
+	projection := mgl32.Perspective(mgl32.DegToRad(camera.fov), float32(height)/float32(width), 0.1, 1000.0)
 	camera.projection = projection
 	return camera
 }

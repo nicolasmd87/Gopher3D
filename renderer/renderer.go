@@ -35,7 +35,7 @@ func Init() {
 	}
 	gl.Enable(gl.DEPTH_TEST)
 	gl.DepthFunc(gl.LEQUAL)
-	gl.Viewport(0, 0, 800, 600)
+	gl.Viewport(0, 0, 1024, 768)
 	initOpenGL()
 }
 
@@ -50,7 +50,6 @@ func initOpenGL() {
 }
 
 func AddModel(model *Model) {
-	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	var vao uint32
 	gl.GenVertexArrays(1, &vao)
 	gl.BindVertexArray(vao)
@@ -71,11 +70,13 @@ func AddModel(model *Model) {
 	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(model.Faces)*4, gl.Ptr(model.Faces), gl.STATIC_DRAW)
 
 	//fmt.Println("Vertices:", model.Vertices)
-	fmt.Println("Faces:", model.Faces)
+	//fmt.Println("Faces:", model.Faces)
 	//fmt.Println("Texture coords:", model.Faces)
 
 	stride := int32(3 * 4) // 3 for vertex position + 2 for texture coordinate, each 4 bytes.
-	stride_texture := int32(8 * 4)
+	// OPEN GL doc specifies: 8 * sizeof(float) -> don't know why this works
+	stride_texture := int32(3 * 4)
+
 	// Vertex Position Attribute
 	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, stride, gl.PtrOffset(0))
 	gl.EnableVertexAttribArray(0)
@@ -86,7 +87,7 @@ func AddModel(model *Model) {
 	gl.EnableVertexAttribArray(1)
 
 	// DEBUG
-	gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
+	//gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
 	model.VAO = vao
 	model.VBO = vbo
@@ -101,11 +102,10 @@ func Render(camera Camera, deltaTime float64) {
 	viewProjection := camera.GetViewProjection()
 	gl.UseProgram(shaderProgram)
 	gl.UniformMatrix4fv(viewProjLoc, 1, false, &viewProjection[0])
-
 	for _, model := range models {
 		gl.BindVertexArray(model.VAO)
 		gl.UniformMatrix4fv(modelLoc, 1, false, &model.ModelMatrix[0])
-		fmt.Printf("len(model.Faces): %v\n", len(model.Faces))
+		RotateModel(model, 0, 1, 0)
 		gl.DrawElements(gl.TRIANGLES, int32(len(model.Faces)), gl.UNSIGNED_INT, nil)
 	}
 }
@@ -139,7 +139,7 @@ uniform sampler2D textureSampler;
 out vec4 FragColor;
 
 void main() {
-	FragColor = texture(textureSampler, fragTexCoord * 0.1);
+	FragColor = texture(textureSampler, fragTexCoord * 0.01);
 }` + "\x00"
 
 func genShader(source string, shaderType uint32) uint32 {
@@ -193,7 +193,7 @@ func parseVertex(parts []string) ([]float32, error) {
 	for _, part := range parts {
 		val, err := strconv.ParseFloat(part, 32)
 		if err != nil {
-			return nil, fmt.Errorf("invalid vertex value %v: %v", part, err)
+			return nil, fmt.Errorf("Invalid vertex value %v: %v", part, err)
 		}
 		vertex = append(vertex, float32(val))
 	}
@@ -206,7 +206,7 @@ func parseFace(parts []string) ([]int32, error) {
 		vals := strings.Split(part, "/")
 		idx, err := strconv.ParseInt(vals[0], 10, 32)
 		if err != nil {
-			return nil, fmt.Errorf("invalid face index %v: %v", vals[0], err)
+			return nil, fmt.Errorf("Invalid face index %v: %v", vals[0], err)
 		}
 		face = append(face, int32(idx-1)) // .obj indices start at 1, not 0
 	}
@@ -225,9 +225,19 @@ func parseTextureCoordinate(parts []string) ([]float32, error) {
 	for _, part := range parts {
 		val, err := strconv.ParseFloat(part, 32)
 		if err != nil {
-			return nil, fmt.Errorf("invalid texture coordinate value %v: %v", part, err)
+			return nil, fmt.Errorf("Invalid texture coordinate value %v: %v", part, err)
 		}
 		texCoord = append(texCoord, float32(val))
 	}
 	return texCoord, nil
+}
+
+func RotateModel(model *Model, angleX, angleY float32, angleZ float32) {
+	// Create rotation matrices for X and Y axes
+	rotationX := mgl32.HomogRotate3DX(mgl32.DegToRad(angleX))
+	rotationY := mgl32.HomogRotate3DY(mgl32.DegToRad(angleY))
+	rotationZ := mgl32.HomogRotate3DY(mgl32.DegToRad(angleY))
+
+	// Apply the rotations to the model's ModelMatrix
+	model.ModelMatrix = model.ModelMatrix.Mul4(rotationX).Mul4(rotationY).Mul4(rotationZ)
 }

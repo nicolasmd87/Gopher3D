@@ -19,18 +19,18 @@ func main() {
 	runtime.LockOSThread()
 
 	if err := glfw.Init(); err != nil {
-		log.Fatalf("could not initialize glfw: %v", err)
+		log.Fatalf("Could not initialize glfw: %v", err)
 	}
 	defer glfw.Terminate()
 
-	window, err := glfw.CreateWindow(800, 600, "3D Engine", nil, nil)
+	window, err := glfw.CreateWindow(1024, 768, "Gopher 3D", nil, nil)
 	if err != nil {
-		log.Fatalf("could not create glfw window: %v", err)
+		log.Fatalf("Could not create glfw window: %v", err)
 	}
 	window.MakeContextCurrent()
 
 	if err := gl.Init(); err != nil {
-		log.Fatalf("could not initialize OpenGL: %v", err)
+		log.Fatalf("Could not initialize OpenGL: %v", err)
 	}
 
 	renderer.Init()

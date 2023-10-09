@@ -28,14 +28,14 @@ var (
 	viewProjLoc   int32
 )
 
-func Init() {
+func Init(width, height int32) {
 	if err := gl.Init(); err != nil {
 		fmt.Println("OpenGL initialization failed:", err)
 		return
 	}
 	gl.Enable(gl.DEPTH_TEST)
 	gl.DepthFunc(gl.LEQUAL)
-	gl.Viewport(0, 0, 1024, 768)
+	gl.Viewport(0, 0, width, height)
 	initOpenGL()
 }
 
@@ -87,7 +87,7 @@ func AddModel(model *Model) {
 	gl.EnableVertexAttribArray(1)
 
 	// DEBUG
-	//gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
+	gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
 	model.VAO = vao
 	model.VBO = vbo
@@ -105,7 +105,7 @@ func Render(camera Camera, deltaTime float64) {
 	for _, model := range models {
 		gl.BindVertexArray(model.VAO)
 		gl.UniformMatrix4fv(modelLoc, 1, false, &model.ModelMatrix[0])
-		RotateModel(model, 0, 1, 0)
+		RotateModel(model, 1, 1, 0)
 		gl.DrawElements(gl.TRIANGLES, int32(len(model.Faces)), gl.UNSIGNED_INT, nil)
 	}
 }
@@ -236,7 +236,7 @@ func RotateModel(model *Model, angleX, angleY float32, angleZ float32) {
 	// Create rotation matrices for X and Y axes
 	rotationX := mgl32.HomogRotate3DX(mgl32.DegToRad(angleX))
 	rotationY := mgl32.HomogRotate3DY(mgl32.DegToRad(angleY))
-	rotationZ := mgl32.HomogRotate3DY(mgl32.DegToRad(angleY))
+	rotationZ := mgl32.HomogRotate3DY(mgl32.DegToRad(angleZ))
 
 	// Apply the rotations to the model's ModelMatrix
 	model.ModelMatrix = model.ModelMatrix.Mul4(rotationX).Mul4(rotationY).Mul4(rotationZ)

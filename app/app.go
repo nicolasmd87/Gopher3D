@@ -11,8 +11,9 @@ import (
 	"github.com/go-gl/glfw/v3.3/glfw"
 )
 
-var lastX, lastY float64 = 400, 300 // Initialize to the center of the window
-var firstMouse = true
+var width, height int32 = 800, 600                                 // Initialize to the center of the window
+var lastX, lastY float64 = float64(width / 2), float64(height / 2) // Initialize to the center of the window
+var firstMouse bool = true
 var camera renderer.Camera
 
 func main() {
@@ -23,7 +24,7 @@ func main() {
 	}
 	defer glfw.Terminate()
 
-	window, err := glfw.CreateWindow(1024, 768, "Gopher 3D", nil, nil)
+	window, err := glfw.CreateWindow(int(width), int(height), "Gopher 3D", nil, nil)
 	if err != nil {
 		log.Fatalf("Could not create glfw window: %v", err)
 	}
@@ -33,12 +34,12 @@ func main() {
 		log.Fatalf("Could not initialize OpenGL: %v", err)
 	}
 
-	renderer.Init()
+	renderer.Init(width, height)
 	model := renderer.LoadObject()
 	renderer.AddModel(model)
 
 	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
-	camera = renderer.NewCamera(800, 600) // Initialize the global camera variable
+	camera = renderer.NewCamera(width, height) // Initialize the global camera variable
 
 	window.SetInputMode(glfw.CursorMode, glfw.CursorDisabled) // Hide and capture the cursor
 	window.SetCursorPosCallback(mouseCallback)                // Set the callback function for mouse movement
@@ -48,7 +49,7 @@ func main() {
 		currentTime := glfw.GetTime()
 		deltaTime := currentTime - lastTime
 		lastTime = currentTime
-
+		//camera.LookAt(mgl32.Vec3{0, 0, 0})
 		camera.ProcessKeyboard(window, float32(deltaTime))
 		renderer.Render(camera, deltaTime) // Pass the dereferenced camera object to Render
 
@@ -58,9 +59,15 @@ func main() {
 		time.Sleep(16 * time.Millisecond)
 	}
 }
-
 func mouseCallback(w *glfw.Window, xpos, ypos float64) {
 	if w.GetMouseButton(glfw.MouseButtonRight) == glfw.Press {
+		if firstMouse {
+			lastX = xpos
+			lastY = ypos
+			firstMouse = false
+			return
+		}
+
 		xoffset := xpos - lastX
 		yoffset := lastY - ypos // Reversed since y-coordinates go from bottom to top
 		lastX = xpos
@@ -68,9 +75,6 @@ func mouseCallback(w *glfw.Window, xpos, ypos float64) {
 
 		camera.ProcessMouseMovement(float32(xoffset), float32(yoffset), true)
 	} else {
-		// Update the last mouse position even if the right mouse button is not pressed
-		// to prevent a sudden jump when the button is pressed again.
-		lastX = xpos
-		lastY = ypos
+		firstMouse = true
 	}
 }

@@ -49,7 +49,6 @@ func main() {
 		currentTime := glfw.GetTime()
 		deltaTime := currentTime - lastTime
 		lastTime = currentTime
-		//camera.LookAt(mgl32.Vec3{0, 0, 0})
 		camera.ProcessKeyboard(window, float32(deltaTime))
 		renderer.Render(camera, deltaTime) // Pass the dereferenced camera object to Render
 

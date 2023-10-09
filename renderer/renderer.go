@@ -105,7 +105,7 @@ func Render(camera Camera, deltaTime float64) {
 	for _, model := range models {
 		gl.BindVertexArray(model.VAO)
 		gl.UniformMatrix4fv(modelLoc, 1, false, &model.ModelMatrix[0])
-		RotateModel(model, 1, 1, 0)
+		//RotateModel(model, 1, 1, 0)
 		gl.DrawElements(gl.TRIANGLES, int32(len(model.Faces)), gl.UNSIGNED_INT, nil)
 	}
 }

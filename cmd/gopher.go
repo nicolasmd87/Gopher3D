@@ -15,6 +15,7 @@ var width, height int32 = 800, 600                                 // Initialize
 var lastX, lastY float64 = float64(width / 2), float64(height / 2) // Initialize to the center of the window
 var firstMouse bool = true
 var camera renderer.Camera
+var refreshRate time.Duration = 1000 / 144 // 144 FPS
 
 func main() {
 	runtime.LockOSThread()
@@ -55,7 +56,7 @@ func main() {
 		window.SwapBuffers()
 		glfw.PollEvents()
 
-		time.Sleep(16 * time.Millisecond)
+		time.Sleep(refreshRate * time.Millisecond)
 	}
 }
 func mouseCallback(w *glfw.Window, xpos, ypos float64) {

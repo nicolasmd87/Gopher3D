@@ -9,8 +9,11 @@ import (
 
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
-	imgui "github.com/inkyblackness/imgui-go"
+
+	imgui "github.com/AllenDang/cimgui-go"
 )
+
+const glsl_version string = "#version 410"
 
 var width, height int32 = 800, 600                                 // Initialize to the center of the window
 var lastX, lastY float64 = float64(width / 2), float64(height / 2) // Initialize to the center of the window
@@ -30,28 +33,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Could not create glfw window: %v", err)
 	}
-
-	// Begin GUI
-	// After creating the ImGui context
-	imgui.CreateContext(nil)
-
-	// Retrieve font texture data
-	io := imgui.CurrentIO()
-	image := io.Fonts().TextureDataRGBA32()
-	io.SetDisplaySize(imgui.Vec2{X: float32(width), Y: float32(height)})
-
-	// Upload the texture data to OpenGL
-	var fontTexture uint32
-	gl.GenTextures(1, &fontTexture)
-	gl.BindTexture(gl.TEXTURE_2D, fontTexture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(image.Width), int32(image.Height), 0, gl.RGBA, gl.UNSIGNED_BYTE, image.Pixels)
-
-	// Set the texture ID for ImGui
-	io.Fonts().SetTextureID(imgui.TextureID(fontTexture))
-
-	// End GUI
 	window.MakeContextCurrent()
 
 	if err := gl.Init(); err != nil {
@@ -63,36 +44,37 @@ func main() {
 	renderer.AddModel(model)
 
 	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
-	camera = renderer.NewCamera(width, height)
 
-	window.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
-	window.SetCursorPosCallback(mouseCallback)
+	// Initialize ImGui context
+	context := imgui.CreateContext()
+	defer context.Destroy()
+
+	if err != nil {
+		log.Fatalf("Failed to initialize GLFW //platform  // TODO: Adjust this reference: %v", err)
+	}
+
+	camera = renderer.NewCamera(width, height) // Initialize the global camera variable
+
+	window.SetInputMode(glfw.CursorMode, glfw.CursorDisabled) // Hide and capture the cursor
+	window.SetCursorPosCallback(mouseCallback)                // Set the callback function for mouse movement
 
 	var lastTime = glfw.GetTime()
 	for !window.ShouldClose() {
-		// Start the Dear ImGui frame
-		imgui.NewFrame()
-
-		// Create a top menu bar
-		if imgui.BeginMainMenuBar() {
-			if imgui.BeginMenu("Model") {
-				if imgui.MenuItem("Load") {
-					// Handle the loading logic here
-				}
-				imgui.EndMenu()
-			}
-			imgui.EndMainMenuBar()
-		}
-
 		currentTime := glfw.GetTime()
 		deltaTime := currentTime - lastTime
 		lastTime = currentTime
 		camera.ProcessKeyboard(window, float32(deltaTime))
-		renderer.Render(camera, deltaTime)
 
-		// Render ImGui's output
+		// Start ImGui frame
+		// TODO: Adjust this line if necessary
+		//imgui.NewFrame()
+
+		// TODO: Add ImGui UI elements here or call a separate function
+
+		// Render ImGui
 		imgui.Render()
-		// Here, you would integrate the rendering logic to draw ImGui's data using OpenGL.
+		// TODO: Correct Rendering Call and use renderer.Render
+		renderer.Render(camera, deltaTime) // Pass the dereferenced camera object to Render
 
 		window.SwapBuffers()
 		glfw.PollEvents()
@@ -100,7 +82,6 @@ func main() {
 		time.Sleep(refreshRate * time.Millisecond)
 	}
 }
-
 func mouseCallback(w *glfw.Window, xpos, ypos float64) {
 	if w.GetMouseButton(glfw.MouseButtonRight) == glfw.Press {
 		if firstMouse {

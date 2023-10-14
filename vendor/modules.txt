@@ -5,6 +5,7 @@ fyne.io/fyne/v2/app
 fyne.io/fyne/v2/canvas
 fyne.io/fyne/v2/container
 fyne.io/fyne/v2/data/binding
+fyne.io/fyne/v2/dialog
 fyne.io/fyne/v2/driver/desktop
 fyne.io/fyne/v2/driver/mobile
 fyne.io/fyne/v2/internal
@@ -45,9 +46,6 @@ fyne.io/fyne/v2/widget
 fyne.io/systray
 fyne.io/systray/internal/generated/menu
 fyne.io/systray/internal/generated/notifier
-# github.com/AllenDang/cimgui-go v0.0.0-20231009021832-f9856eb4a9a7
-## explicit; go 1.21
-github.com/AllenDang/cimgui-go
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew

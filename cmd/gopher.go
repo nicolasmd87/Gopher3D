@@ -9,11 +9,7 @@ import (
 
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
-
-	imgui "github.com/AllenDang/cimgui-go"
 )
-
-const glsl_version string = "#version 410"
 
 var width, height int32 = 800, 600                                 // Initialize to the center of the window
 var lastX, lastY float64 = float64(width / 2), float64(height / 2) // Initialize to the center of the window
@@ -21,7 +17,15 @@ var firstMouse bool = true
 var camera renderer.Camera
 var refreshRate time.Duration = 1000 / 144 // 144 FPS
 
-func main() {
+type gopher struct {
+	window *glfw.Window
+}
+
+func NewGopher() *gopher {
+	return &gopher{}
+}
+
+func (gopher *gopher) Render() {
 	runtime.LockOSThread()
 
 	if err := glfw.Init(); err != nil {
@@ -44,15 +48,6 @@ func main() {
 	renderer.AddModel(model)
 
 	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
-
-	// Initialize ImGui context
-	context := imgui.CreateContext()
-	defer context.Destroy()
-
-	if err != nil {
-		log.Fatalf("Failed to initialize GLFW //platform  // TODO: Adjust this reference: %v", err)
-	}
-
 	camera = renderer.NewCamera(width, height) // Initialize the global camera variable
 
 	window.SetInputMode(glfw.CursorMode, glfw.CursorDisabled) // Hide and capture the cursor
@@ -64,16 +59,6 @@ func main() {
 		deltaTime := currentTime - lastTime
 		lastTime = currentTime
 		camera.ProcessKeyboard(window, float32(deltaTime))
-
-		// Start ImGui frame
-		// TODO: Adjust this line if necessary
-		//imgui.NewFrame()
-
-		// TODO: Add ImGui UI elements here or call a separate function
-
-		// Render ImGui
-		imgui.Render()
-		// TODO: Correct Rendering Call and use renderer.Render
 		renderer.Render(camera, deltaTime) // Pass the dereferenced camera object to Render
 
 		window.SwapBuffers()

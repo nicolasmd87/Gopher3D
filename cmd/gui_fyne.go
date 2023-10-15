@@ -33,7 +33,10 @@ func main() {
 	box := container.NewVBox(
 		widget.NewLabel("Welcome to the Gopher 3D Engine!"),
 	)
-	go g.Render()
+	// Position the fyne window slightly away from the top-left corner
+	gap := 50 // gap in pixels
+
+	go g.Render(1024+gap, gap)
 	w.SetContent(box)
 	w.ShowAndRun()
 

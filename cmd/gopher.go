@@ -1,11 +1,10 @@
 package main
 
 import (
+	"Gopher3D/renderer"
 	"log"
 	"runtime"
 	"time"
-
-	"Gopher3D/renderer"
 
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
@@ -25,7 +24,7 @@ func NewGopher() *gopher {
 	return &gopher{}
 }
 
-func (gopher *gopher) Render() {
+func (gopher *gopher) Render(x, y int) {
 	runtime.LockOSThread()
 
 	if err := glfw.Init(); err != nil {
@@ -43,6 +42,9 @@ func (gopher *gopher) Render() {
 		log.Fatalf("Could not initialize OpenGL: %v", err)
 	}
 
+	// Set GLFW window position here using the passed-in position
+	window.SetPos(x, y)
+
 	renderer.Init(width, height)
 	model := renderer.LoadObject()
 	renderer.AddModel(model)
@@ -50,8 +52,10 @@ func (gopher *gopher) Render() {
 	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
 	camera = renderer.NewCamera(width, height) // Initialize the global camera variable
 
-	window.SetInputMode(glfw.CursorMode, glfw.CursorDisabled) // Hide and capture the cursor
-	window.SetCursorPosCallback(mouseCallback)                // Set the callback function for mouse movement
+	//window.SetInputMode(glfw.CursorMode, glfw.CursorDisabled) // Hide and capture the cursor
+	window.SetInputMode(glfw.CursorMode, glfw.CursorNormal) // Set cursor to normal mode initially
+
+	window.SetCursorPosCallback(mouseCallback) // Set the callback function for mouse movement
 
 	var lastTime = glfw.GetTime()
 	for !window.ShouldClose() {
@@ -68,7 +72,8 @@ func (gopher *gopher) Render() {
 	}
 }
 func mouseCallback(w *glfw.Window, xpos, ypos float64) {
-	if w.GetMouseButton(glfw.MouseButtonRight) == glfw.Press {
+	// Check if the window is focused and the right mouse button is pressed
+	if w.GetAttrib(glfw.Focused) == glfw.True && w.GetMouseButton(glfw.MouseButtonRight) == glfw.Press {
 		if firstMouse {
 			lastX = xpos
 			lastY = ypos

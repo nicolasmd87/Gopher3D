@@ -14,11 +14,11 @@ import (
 var modelChan = make(chan *renderer.Model)
 
 func main() {
-	a := app.New()
-	w := a.NewWindow("3D Engine")
+	app := app.New()
+	window := app.NewWindow("Gopher 3D")
 	gopher := NewGopher()
 	// Set window size to 1024x768
-	w.Resize(fyne.NewSize(1024, 768))
+	window.Resize(fyne.NewSize(1024, 768))
 
 	loadItem := fyne.NewMenuItem("Load Object", func() {
 		fd := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
@@ -27,7 +27,7 @@ func main() {
 				return
 			}
 			if err != nil {
-				dialog.ShowError(err, w)
+				dialog.ShowError(err, window)
 				return
 			}
 			defer reader.Close()
@@ -35,11 +35,11 @@ func main() {
 			filePath := reader.URI().Path()
 			model, err := renderer.LoadObjectWithPath(filePath)
 			if err != nil {
-				dialog.ShowError(err, w)
+				dialog.ShowError(err, window)
 				return
 			}
 			modelChan <- model
-		}, w)
+		}, window)
 
 		fd.SetFilter(storage.NewExtensionFileFilter([]string{".obj"})) // For example, filter for ".obj" files
 		fd.Show()
@@ -51,20 +51,18 @@ func main() {
 		fyne.NewMenu("File", loadItem),
 	)
 
-	w.SetMainMenu(mainMenu)
+	window.SetMainMenu(mainMenu)
 
 	// Create a box container (vbox) to place the label.
 	box := container.NewVBox(
 		widget.NewLabel("Welcome to the Gopher 3D Engine!"),
 	)
-	// Position the fyne window slightly away from the top-left corner
+
 	gap := 50 // gap in pixels
 
 	go gopher.Render(1024+gap, gap, modelChan)
 
-	w.SetContent(box)
+	window.SetContent(box)
 
-	w.ShowAndRun()
-
-	// Use a goroutine to run the renderer, so it doesn't block the main thread
+	window.ShowAndRun()
 }

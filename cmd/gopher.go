@@ -10,6 +10,8 @@ import (
 	"github.com/go-gl/glfw/v3.3/glfw"
 )
 
+var COLOR_ACTIVECAPTION int32 = 2
+
 var width, height int32 = 800, 600                                 // Initialize to the center of the window
 var lastX, lastY float64 = float64(width / 2), float64(height / 2) // Initialize to the center of the window
 var firstMouse bool = true
@@ -32,7 +34,11 @@ func (gopher *gopher) Render(x, y int, modelChan chan *renderer.Model) {
 	}
 	defer glfw.Terminate()
 
+	// Set GLFW window hints here
+	glfw.WindowHint(glfw.Decorated, glfw.True)
+	glfw.WindowHint(glfw.Resizable, glfw.True)
 	window, err := glfw.CreateWindow(int(width), int(height), "Gopher 3D", nil, nil)
+
 	if err != nil {
 		log.Fatalf("Could not create glfw window: %v", err)
 	}
@@ -46,8 +52,6 @@ func (gopher *gopher) Render(x, y int, modelChan chan *renderer.Model) {
 	window.SetPos(x, y)
 
 	renderer.Init(width, height)
-	//model := renderer.LoadObject()
-	//renderer.AddModel(model)
 
 	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
 	camera = renderer.NewCamera(width, height) // Initialize the global camera variable
@@ -71,9 +75,8 @@ func (gopher *gopher) Render(x, y int, modelChan chan *renderer.Model) {
 		time.Sleep(refreshRate * time.Millisecond)
 		select {
 		case model := <-modelChan:
-			//model = renderer.LoadObject()
 			renderer.AddModel(model)
-			renderer.SetTexture("../obj/DirtMetal.jpg", model)
+			renderer.SetTexture("../textures/DirtMetal.jpg", model)
 		case <-time.After(refreshRate):
 			continue
 		}

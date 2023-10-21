@@ -24,7 +24,7 @@ func NewGopher() *gopher {
 	return &gopher{}
 }
 
-func (gopher *gopher) Render(x, y int) {
+func (gopher *gopher) Render(x, y int, modelChan chan *renderer.Model) {
 	runtime.LockOSThread()
 
 	if err := glfw.Init(); err != nil {
@@ -46,8 +46,8 @@ func (gopher *gopher) Render(x, y int) {
 	window.SetPos(x, y)
 
 	renderer.Init(width, height)
-	model := renderer.LoadObject()
-	renderer.AddModel(model)
+	//model := renderer.LoadObject()
+	//renderer.AddModel(model)
 
 	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
 	camera = renderer.NewCamera(width, height) // Initialize the global camera variable
@@ -69,6 +69,14 @@ func (gopher *gopher) Render(x, y int) {
 		glfw.PollEvents()
 
 		time.Sleep(refreshRate * time.Millisecond)
+		select {
+		case model := <-modelChan:
+			//model = renderer.LoadObject()
+			renderer.AddModel(model)
+			renderer.SetTexture("../obj/DirtMetal.jpg", model)
+		case <-time.After(refreshRate):
+			continue
+		}
 	}
 }
 func mouseCallback(w *glfw.Window, xpos, ypos float64) {

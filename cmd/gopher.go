@@ -61,6 +61,9 @@ func (gopher *gopher) Render(x, y int, modelChan chan *renderer.Model) {
 
 	window.SetCursorPosCallback(mouseCallback) // Set the callback function for mouse movement
 
+	// Debug mode
+	renderer.Debug = false
+
 	var lastTime = glfw.GetTime()
 	for !window.ShouldClose() {
 		currentTime := glfw.GetTime()
@@ -77,6 +80,7 @@ func (gopher *gopher) Render(x, y int, modelChan chan *renderer.Model) {
 		case model := <-modelChan:
 			renderer.AddModel(model)
 			renderer.SetTexture("../textures/DirtMetal.jpg", model)
+			//renderer.SetTexture("../textures/Default.png", model)
 		case <-time.After(refreshRate):
 			continue
 		}

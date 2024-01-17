@@ -32,7 +32,7 @@ func NewCamera(height int32, width int32) Camera {
 		worldUp:     mgl32.Vec3{0, 1, 0},
 		pitch:       0.0,
 		yaw:         -90.0,
-		speed:       100.5,
+		speed:       70,
 		sensitivity: 0.1,
 		fov:         45.0,
 		lastX:       float32(width) / 2,
@@ -58,6 +58,16 @@ func (c *Camera) GetViewProjection() mgl32.Mat4 {
 func (c *Camera) ProcessKeyboard(window *glfw.Window, deltaTime float32) {
 	// Compute the right vector
 	c.right = c.front.Cross(c.worldUp).Normalize()
+<<<<<<< HEAD
+
+	baseVelocity := c.speed * deltaTime
+
+	// If Shift is pressed, multiply the velocity by a factor (e.g., 2.5)
+	if window.GetKey(glfw.KeyLeftShift) == glfw.Press || window.GetKey(glfw.KeyRightShift) == glfw.Press {
+		baseVelocity *= 2.5
+	}
+
+=======
 
 	velocity := c.speed * deltaTime
 
@@ -66,17 +76,25 @@ func (c *Camera) ProcessKeyboard(window *glfw.Window, deltaTime float32) {
 		velocity *= 2.5
 	}
 
+>>>>>>> main
 	if window.GetKey(glfw.KeyW) == glfw.Press {
-		c.position = c.position.Add(c.front.Mul(velocity))
+		c.position = c.position.Add(c.front.Mul(baseVelocity))
 	}
 	if window.GetKey(glfw.KeyS) == glfw.Press {
-		c.position = c.position.Sub(c.front.Mul(velocity))
+		c.position = c.position.Sub(c.front.Mul(baseVelocity))
 	}
 	if window.GetKey(glfw.KeyA) == glfw.Press {
+<<<<<<< HEAD
+		c.position = c.position.Sub(c.right.Mul(baseVelocity))
+	}
+	if window.GetKey(glfw.KeyD) == glfw.Press {
+		c.position = c.position.Add(c.right.Mul(baseVelocity))
+=======
 		c.position = c.position.Sub(c.right.Mul(velocity))
 	}
 	if window.GetKey(glfw.KeyD) == glfw.Press {
 		c.position = c.position.Add(c.right.Mul(velocity))
+>>>>>>> main
 	}
 }
 

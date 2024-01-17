@@ -10,6 +10,7 @@ import (
 )
 
 type Model struct {
+	Id            int
 	Vertices      []float32
 	Normals       []float32
 	Faces         []int32
@@ -26,6 +27,7 @@ var (
 	shaderProgram uint32
 	modelLoc      int32
 	viewProjLoc   int32
+	Debug         bool = false
 )
 
 func Init(width, height int32) {
@@ -87,7 +89,9 @@ func AddModel(model *Model) {
 	gl.EnableVertexAttribArray(1)
 
 	// DEBUG
-	gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
+	if Debug {
+		gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
+	}
 
 	model.VAO = vao
 	model.VBO = vbo

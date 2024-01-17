@@ -15,6 +15,12 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 )
 
+func LoadObjectWithPath(Path string) (*Model, error) {
+	fmt.Println("Loading object from path: " + Path)
+	model, err := LoadModel(Path)
+	return model, err
+}
+
 func LoadObject() *Model {
 	files, err := os.ReadDir("../obj")
 	if err != nil {
@@ -23,7 +29,7 @@ func LoadObject() *Model {
 
 	for _, file := range files {
 		if !file.IsDir() && strings.HasSuffix(file.Name(), ".obj") {
-			model, err := LoadModel("../obj/"+file.Name(), "../obj/DirtMetal.jpg")
+			model, err := LoadModel("../obj/" + file.Name())
 			if err != nil {
 				log.Fatalf("Could not load the obj file %s: %v", file.Name(), err)
 			}
@@ -33,7 +39,7 @@ func LoadObject() *Model {
 	return nil
 }
 
-func LoadModel(filename string, texturePath string) (*Model, error) {
+func LoadModel(filename string) (*Model, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err
@@ -105,15 +111,16 @@ func LoadModel(filename string, texturePath string) (*Model, error) {
 		model.Vertices[i*3+2] -= centroid.Z()
 	}
 
-	// Load and bind the texture
-	textureID, err := loadTexture(texturePath)
 	if err != nil {
 		return nil, err
 	}
 
-	model.TextureID = textureID // Store the texture ID in the Model struct
-
 	return model, nil
+}
+
+func SetTexture(texturePath string, model *Model) {
+	textureID, _ := loadTexture(texturePath)
+	model.TextureID = textureID // Store the texture ID in the Model struct
 }
 
 func loadTexture(filePath string) (uint32, error) { // Consider specifying image format or handling different formats properly

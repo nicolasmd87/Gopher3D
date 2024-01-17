@@ -69,14 +69,12 @@ func AddParentNode(name string) {
 }
 
 func createTree() *widget.Tree {
-	fmt.Println("New tree")
 	tree := widget.NewTree(
 		func(id widget.TreeNodeID) (children []widget.TreeNodeID) {
 			fmt.Println("ID: ", id)
 			if id == "" {
 				// If id is empty, it's the root node
 				return []widget.TreeNodeID{"Root"} // Adjust as needed
-				fmt.Println("ROOT created")
 			}
 
 			node := rootObject.FindChild(id)

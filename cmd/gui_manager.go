@@ -136,7 +136,6 @@ func main() {
 			modelChan <- model
 
 			objectName := filepath.Base(filePath)
-			fmt.Println("TREE: ", tree.Root)
 			AddParentNode(objectName)
 
 		}, window)
@@ -144,9 +143,38 @@ func main() {
 		fd.SetFilter(storage.NewExtensionFileFilter([]string{".obj"}))
 		fd.Show()
 	})
+	loadTexture := fyne.NewMenuItem("Load Texture", func() {
+		fd := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
+			if err == nil && reader == nil {
+				return
+			}
+			if err != nil {
+				dialog.ShowError(err, window)
+				return
+			}
+			defer reader.Close()
+
+			filePath := reader.URI().Path()
+			// NEED TO SEND A MESSAGE LIKE THE MODEL! THIS WON'T WORK
+			renderer.SetTexture(filePath, renderer.Models[0])
+		}, window)
+
+		fd.SetFilter(storage.NewExtensionFileFilter([]string{".jpg", ".png"}))
+		fd.Show()
+	})
+	view := fyne.NewMenuItem("Debug", func() {
+		fmt.Println("Debug: ", renderer.Debug)
+		if !renderer.Debug {
+			renderer.Debug = true
+			return
+		}
+		renderer.Debug = false
+	})
 
 	mainMenu := fyne.NewMainMenu(
 		fyne.NewMenu("File", loadItem),
+		fyne.NewMenu("Texture", loadTexture),
+		fyne.NewMenu("View", view),
 	)
 
 	window.SetMainMenu(mainMenu)

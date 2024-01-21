@@ -34,6 +34,7 @@ func (gopher *gopher) Render(x, y int, modelChan chan *renderer.Model) {
 	}
 	defer glfw.Terminate()
 
+	light := renderer.CreateLight()
 	// Set GLFW window hints here
 	glfw.WindowHint(glfw.Decorated, glfw.True)
 	glfw.WindowHint(glfw.Resizable, glfw.True)
@@ -70,7 +71,7 @@ func (gopher *gopher) Render(x, y int, modelChan chan *renderer.Model) {
 		deltaTime := currentTime - lastTime
 		lastTime = currentTime
 		camera.ProcessKeyboard(window, float32(deltaTime))
-		renderer.Render(camera, deltaTime) // Pass the dereferenced camera object to Render
+		renderer.Render(camera, deltaTime, light) // Pass the dereferenced camera object to Render
 
 		window.SwapBuffers()
 		glfw.PollEvents()
@@ -79,8 +80,9 @@ func (gopher *gopher) Render(x, y int, modelChan chan *renderer.Model) {
 		select {
 		case model := <-modelChan:
 			renderer.AddModel(model)
-			renderer.SetTexture("../textures/DirtMetal.jpg", model)
-			//renderer.SetTexture("../textures/Default.png", model)
+			//renderer.SetTexture("../textures/DirtMetal.jpg", model)
+			//renderer.SetTexture("../textures/Earth.jpg", model)
+			renderer.SetTexture("../textures/2k_mars.jpg", model)
 		case <-time.After(refreshRate):
 			continue
 		}

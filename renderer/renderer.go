@@ -93,10 +93,6 @@ func AddModel(model *Model) {
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo)
 	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(model.Faces)*4, gl.Ptr(model.Faces), gl.STATIC_DRAW)
 
-	if Debug {
-		gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
-	}
-
 	model.VAO = vao
 	model.VBO = vbo
 	model.EBO = ebo
@@ -106,6 +102,12 @@ func AddModel(model *Model) {
 }
 
 func Render(camera Camera, deltaTime float64, light Light) {
+	if Debug {
+		gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
+	} else {
+		// Switch back to solid fill mode
+		gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
+	}
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	viewProjection := camera.GetViewProjection()
 	gl.UseProgram(shaderProgram)

@@ -144,9 +144,18 @@ func main() {
 		fd.SetFilter(storage.NewExtensionFileFilter([]string{".obj"}))
 		fd.Show()
 	})
+	view := fyne.NewMenuItem("Debug", func() {
+		fmt.Println("Debug: ", renderer.Debug)
+		if !renderer.Debug {
+			renderer.Debug = true
+			return
+		}
+		renderer.Debug = false
+	})
 
 	mainMenu := fyne.NewMainMenu(
 		fyne.NewMenu("File", loadItem),
+		fyne.NewMenu("View", view),
 	)
 
 	window.SetMainMenu(mainMenu)

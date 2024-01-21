@@ -3,15 +3,11 @@ package renderer
 import (
 	"bufio"
 	"fmt"
-	"image"
-	"image/draw"
 	_ "image/jpeg"
 	_ "image/png"
 	"log"
 	"os"
 	"strings"
-
-	"github.com/go-gl/gl/v4.1-core/gl"
 )
 
 func LoadObjectWithPath(Path string) (*Model, error) {
@@ -76,7 +72,7 @@ func LoadModel(filename string) (*Model, error) {
 			if err != nil {
 				return nil, err
 			}
-			textureCoords = append(textureCoords, texCoord...)
+			textureCoords = append(textureCoords, texCoord[0], texCoord[1])
 		case "f":
 			face, err := parseFace(parts[1:])
 			if err != nil {
@@ -91,6 +87,7 @@ func LoadModel(filename string) (*Model, error) {
 	}
 
 	vertexCount := len(vertices) / 3
+
 	for len(textureCoords)/2 < vertexCount {
 		textureCoords = append(textureCoords, 0, 0)
 	}
@@ -111,46 +108,4 @@ func LoadModel(filename string) (*Model, error) {
 	}
 
 	return model, nil
-}
-
-func SetTexture(texturePath string, model *Model) {
-	textureID, _ := loadTexture(texturePath)
-	model.TextureID = textureID // Store the texture ID in the Model struct
-}
-
-func loadTexture(filePath string) (uint32, error) { // Consider specifying image format or handling different formats properly
-
-	imgFile, err := os.Open(filePath)
-	if err != nil {
-		return 0, err
-	}
-	defer imgFile.Close()
-
-	img, _, err := image.Decode(imgFile)
-	if err != nil {
-		return 0, err
-	}
-
-	rgba := image.NewRGBA(img.Bounds())
-	if rgba.Stride != rgba.Rect.Size().X*4 {
-		return 0, fmt.Errorf("unsupported stride")
-	}
-	draw.Draw(rgba, rgba.Bounds(), img, image.Point{0, 0}, draw.Src)
-
-	var textureID uint32
-	// Like any of the previous objects in OpenGL, textures are referenced with an ID; let's create one:
-	gl.GenTextures(1, &textureID)
-	gl.BindTexture(gl.TEXTURE_2D, textureID)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(rgba.Rect.Size().X), int32(rgba.Rect.Size().Y), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(rgba.Pix))
-
-	// Set texture parameters (optional)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_R, gl.REPEAT)
-	//	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-	//	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-	// GL_NEAREST results in blocked patterns where we can clearly see the pixels that form the texture while GL_LINEAR produces a smoother pattern where the individual pixels are less visible.
-	// GL_LINEAR produces a more realistic output, but some developers prefer a more 8-bit look and as a result pick the GL_NEAREST option
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-
-	return textureID, nil
 }

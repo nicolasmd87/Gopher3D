@@ -2,6 +2,9 @@ package renderer
 
 import (
 	"fmt"
+	"image"
+	"image/draw"
+	"os"
 	"strconv"
 	"strings"
 
@@ -23,7 +26,7 @@ type Model struct {
 }
 
 var (
-	models            []*Model
+	Models            []*Model
 	shaderProgram     uint32
 	modelLoc          int32
 	viewProjLoc       int32
@@ -32,6 +35,71 @@ var (
 	lightIntensityLoc int32
 	Debug             bool = false
 )
+
+// =============================================================
+//
+//	Shaders
+//
+// =============================================================
+var vertexShaderSource = `#version 330 core
+layout(location = 0) in vec3 inPosition; // Vertex position
+layout(location = 1) in vec2 inTexCoord; // Texture Coordinate
+layout(location = 2) in vec3 inNormal;   // Vertex normal
+
+
+
+uniform mat4 model;
+uniform mat4 viewProjection;
+out vec2 fragTexCoord;   // Pass to fragment shader
+out vec3 Normal;         // Pass normal to fragment shader
+out vec3 FragPos;        // Pass position to fragment shader
+
+void main() {
+    FragPos = vec3(model * vec4(inPosition, 1.0));
+    Normal = mat3(transpose(inverse(model))) * inNormal; // Transforming the normal
+    fragTexCoord = inTexCoord;
+    gl_Position = viewProjection * model * vec4(inPosition, 1.0);
+}
+
+` + "\x00"
+
+var fragmentShaderSource = `#version 330 core
+in vec2 fragTexCoord; // Received from vertex shader
+in vec3 Normal;       // Received from vertex shader
+in vec3 FragPos;      // Received from vertex shader
+
+uniform sampler2D textureSampler;
+
+struct Light {
+    vec3 position;
+    vec3 color;
+    float intensity;
+};
+
+uniform Light light;  // Light source uniform
+uniform vec3 viewPos; // Camera position (for future use)
+
+out vec4 FragColor;
+
+void main() {
+    // Texture color
+    vec4 texColor = texture(textureSampler, fragTexCoord);
+
+    // Ambient lighting
+    float ambientStrength = 0.1;
+    vec3 ambient = ambientStrength * light.color;
+
+    // Diffuse lighting
+    vec3 norm = normalize(Normal);
+    vec3 lightDir = normalize(light.position - FragPos);
+    float diff = max(dot(norm, lightDir), 0.0);
+    vec3 diffuse = diff * light.color;
+
+    // Combining the lighting components
+    vec3 result = (ambient + diffuse) * light.intensity;
+    FragColor = vec4(result, 1.0) * texColor; // Modulate with texture color
+} 
+` + "\x00"
 
 type Light struct {
 	Position  mgl32.Vec3
@@ -78,27 +146,27 @@ func AddModel(model *Model) {
 	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
 	gl.BufferData(gl.ARRAY_BUFFER, len(model.Vertices)*4, gl.Ptr(model.Vertices), gl.STATIC_DRAW)
 
-	stride := int32((3 + 2 + 3) * 4)
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, stride, gl.PtrOffset(0))
-	gl.EnableVertexAttribArray(0)
-
-	gl.VertexAttribPointer(1, 2, gl.FLOAT, false, stride, gl.PtrOffset(1*4))
-	gl.EnableVertexAttribArray(1)
-
-	gl.VertexAttribPointer(2, 3, gl.FLOAT, false, stride, gl.PtrOffset(5*4))
-	gl.EnableVertexAttribArray(2)
-
 	var ebo uint32
 	gl.GenBuffers(1, &ebo)
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo)
 	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(model.Faces)*4, gl.Ptr(model.Faces), gl.STATIC_DRAW)
+
+	stride := int32((3 + 2 + 3) * 4)
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, stride, gl.PtrOffset(0))
+	gl.EnableVertexAttribArray(0)
+
+	gl.VertexAttribPointer(1, 2, gl.FLOAT, false, stride, gl.PtrOffset(3*4))
+	gl.EnableVertexAttribArray(1)
+
+	gl.VertexAttribPointer(2, 3, gl.FLOAT, false, stride, gl.PtrOffset(20))
+	gl.EnableVertexAttribArray(2)
 
 	model.VAO = vao
 	model.VBO = vbo
 	model.EBO = ebo
 	model.ModelMatrix = mgl32.Ident4()
 
-	models = append(models, model)
+	Models = append(Models, model)
 }
 
 func Render(camera Camera, deltaTime float64, light Light) {
@@ -112,7 +180,7 @@ func Render(camera Camera, deltaTime float64, light Light) {
 	viewProjection := camera.GetViewProjection()
 	gl.UseProgram(shaderProgram)
 	gl.UniformMatrix4fv(viewProjLoc, 1, false, &viewProjection[0])
-	for _, model := range models {
+	for _, model := range Models {
 		gl.BindVertexArray(model.VAO)
 		gl.UniformMatrix4fv(modelLoc, 1, false, &model.ModelMatrix[0])
 
@@ -135,73 +203,12 @@ func Render(camera Camera, deltaTime float64, light Light) {
 }
 
 func Cleanup() {
-	for _, model := range models {
+	for _, model := range Models {
 		gl.DeleteVertexArrays(1, &model.VAO)
 		gl.DeleteBuffers(1, &model.VBO)
 		gl.DeleteBuffers(1, &model.EBO)
 	}
 }
-
-// Shader modifications
-var vertexShaderSource = `#version 330 core
-layout(location = 0) in vec3 inPosition; // Vertex position
-layout(location = 1) in vec3 inNormal;   // Vertex normal
-layout(location = 2) in vec2 inTexCoord; // Texture Coordinate
-
-
-uniform mat4 model;
-uniform mat4 viewProjection;
-out vec2 fragTexCoord;   // Pass to fragment shader
-out vec3 Normal;         // Pass normal to fragment shader
-out vec3 FragPos;        // Pass position to fragment shader
-
-void main() {
-    FragPos = vec3(model * vec4(inPosition, 1.0));
-    Normal = mat3(transpose(inverse(model))) * inNormal; // Transforming the normal
-    fragTexCoord = inTexCoord;
-    gl_Position = viewProjection * model * vec4(inPosition, 1.0);
-}
-
-` + "\x00"
-
-// Need to normalize the texture coordinates
-var fragmentShaderSource = `#version 330 core
-in vec2 fragTexCoord; // Received from vertex shader
-in vec3 Normal;       // Received from vertex shader
-in vec3 FragPos;      // Received from vertex shader
-
-uniform sampler2D textureSampler;
-
-struct Light {
-    vec3 position;
-    vec3 color;
-    float intensity;
-};
-
-uniform Light light;  // Light source uniform
-uniform vec3 viewPos; // Camera position (for future use)
-
-out vec4 FragColor;
-
-void main() {
-    // Texture color
-    vec4 texColor = texture(textureSampler, fragTexCoord);
-
-    // Ambient lighting
-    float ambientStrength = 0.1;
-    vec3 ambient = ambientStrength * light.color;
-
-    // Diffuse lighting
-    vec3 norm = normalize(Normal);
-    vec3 lightDir = normalize(light.position - FragPos);
-    float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = diff * light.color;
-
-    // Combining the lighting components
-    vec3 result = (ambient + diffuse) * light.intensity;
-    FragColor = vec4(result, 1.0) * texColor; // Modulate with texture color
-} 
-` + "\x00"
 
 func genShader(source string, shaderType uint32) uint32 {
 	shader := gl.CreateShader(shaderType)
@@ -305,8 +312,52 @@ func RotateModel(model *Model, angleX, angleY float32, angleZ float32) {
 
 func CreateLight() Light {
 	return Light{
-		Position:  mgl32.Vec3{1.0, 100.0, 1.0}, // Example position
+		Position:  mgl32.Vec3{0.0, 300.0, 0.0}, // Example position
 		Color:     mgl32.Vec3{1.0, 1.0, 1.0},   // White light
-		Intensity: 3.0,                         // Full intensity
+		Intensity: 1.0,                         // Full intensity
 	}
+}
+
+func SetTexture(texturePath string, model *Model) {
+	textureID, _ := loadTexture(texturePath)
+	model.TextureID = textureID // Store the texture ID in the Model struct
+}
+
+func loadTexture(filePath string) (uint32, error) { // Consider specifying image format or handling different formats properly
+
+	imgFile, err := os.Open(filePath)
+	if err != nil {
+		return 0, err
+	}
+	defer imgFile.Close()
+
+	img, _, err := image.Decode(imgFile)
+	if err != nil {
+		return 0, err
+	}
+
+	rgba := image.NewRGBA(img.Bounds())
+	if rgba.Stride != rgba.Rect.Size().X*4 {
+		return 0, fmt.Errorf("unsupported stride")
+	}
+	draw.Draw(rgba, rgba.Bounds(), img, image.Point{0, 0}, draw.Src)
+
+	var textureID uint32
+	// Like any of the previous objects in OpenGL, textures are referenced with an ID; let's create one:
+	gl.GenTextures(1, &textureID)
+	gl.BindTexture(gl.TEXTURE_2D, textureID)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(rgba.Rect.Size().X), int32(rgba.Rect.Size().Y), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(rgba.Pix))
+
+	// Set texture parameters (optional)
+	//gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_R, gl.REPEAT)
+
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+
+	// GL_NEAREST results in blocked patterns where we can clearly see the pixels that form the texture while GL_LINEAR produces a smoother pattern where the individual pixels are less visible.
+	// GL_LINEAR produces a more realistic output, but some developers prefer a more 8-bit look and as a result pick the GL_NEAREST option
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+
+	return textureID, nil
 }

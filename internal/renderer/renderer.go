@@ -60,7 +60,6 @@ void main() {
     fragTexCoord = inTexCoord;
     gl_Position = viewProjection * model * vec4(inPosition, 1.0);
 }
-
 ` + "\x00"
 
 var fragmentShaderSource = `#version 330 core
@@ -196,7 +195,7 @@ func Render(camera Camera, deltaTime float64, light Light) {
 		// Set the sampler to the first texture unit
 		gl.Uniform1i(textureUniform, 0)
 
-		//RotateModel(model, 1, 1, 0)
+		RotateModel(model, 1, 1, 0)
 		gl.DrawElements(gl.TRIANGLES, int32(len(model.Faces)), gl.UNSIGNED_INT, nil)
 
 	}

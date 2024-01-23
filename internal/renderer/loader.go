@@ -53,7 +53,6 @@ func LoadModel(filename string) (*Model, error) {
 		if len(parts) == 0 {
 			continue
 		}
-
 		switch parts[0] {
 		case "v":
 			vertex, err := parseVertex(parts[1:])

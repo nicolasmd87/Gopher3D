@@ -25,5 +25,5 @@ func (mb *MyPlayerBehaviour) Start() {
 }
 
 func (mb *MyPlayerBehaviour) Update() {
-	fmt.Println("MyPlayerBehaviour updated", mb.name)
+	fmt.Println("Doing Stuff on every frame! ", mb.name)
 }

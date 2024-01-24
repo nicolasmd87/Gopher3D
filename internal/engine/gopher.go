@@ -19,15 +19,15 @@ var firstMouse bool = true
 var camera renderer.Camera
 var refreshRate time.Duration = 1000 / 144 // 144 FPS
 
-type gopher struct {
+type Gopher struct {
 	window *glfw.Window
 }
 
-func NewGopher() *gopher {
-	return &gopher{}
+func NewGopher() *Gopher {
+	return &Gopher{}
 }
 
-func (gopher *gopher) Render(x, y int, modelChan chan *renderer.Model) {
+func (gopher *Gopher) Render(x, y int, modelChan chan *renderer.Model) {
 	runtime.LockOSThread()
 
 	if err := glfw.Init(); err != nil {
@@ -82,9 +82,9 @@ func (gopher *gopher) Render(x, y int, modelChan chan *renderer.Model) {
 		select {
 		case model := <-modelChan:
 			renderer.AddModel(model)
-			//renderer.SetTexture("../internal/textures/DirtMetal.jpg", model)
-			//renderer.SetTexture("../internal/textures/Earth.jpg", model)
-			renderer.SetTexture("../internal/textures/2k_mars.jpg", model)
+			//renderer.SetTexture("tmp/textures/DirtMetal.jpg", model)
+			//renderer.SetTexture("tmp/textures/Earth.jpg", model)
+			renderer.SetTexture("tmp/textures/2k_mars.jpg", model)
 		case <-time.After(refreshRate):
 			continue
 		}

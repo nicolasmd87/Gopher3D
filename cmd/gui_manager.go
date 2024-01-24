@@ -2,6 +2,7 @@ package main
 
 import (
 	"Gopher3D/internal/engine"
+	"Gopher3D/internal/loader"
 	"Gopher3D/internal/renderer"
 	"fmt"
 	"path/filepath"
@@ -130,7 +131,7 @@ func main() {
 			defer reader.Close()
 
 			filePath := reader.URI().Path()
-			model, err := renderer.LoadObjectWithPath(filePath)
+			model, err := loader.LoadObjectWithPath(filePath)
 			if err != nil {
 				dialog.ShowError(err, window)
 				return

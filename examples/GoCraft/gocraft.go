@@ -24,7 +24,7 @@ func main() {
 	engine.Render(768, 50, nil)
 }
 func (mb *GoCraftBehaviour) Start() {
-	model, err := loader.LoadObjectWithPath("tmp/obj/Sphere.obj")
+	model, err := loader.LoadObjectWithPath("tmp/examples/GoCraft/Cube.obj")
 	if err != nil {
 		fmt.Println("Error loading model")
 	}

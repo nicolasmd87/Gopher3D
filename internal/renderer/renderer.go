@@ -5,7 +5,6 @@ import (
 	"image"
 	"image/draw"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/go-gl/gl/v4.1-core/gl"
@@ -56,7 +55,8 @@ out vec3 FragPos;        // Pass position to fragment shader
 
 void main() {
     FragPos = vec3(model * vec4(inPosition, 1.0));
-    Normal = mat3(transpose(inverse(model))) * inNormal; // Transforming the normal
+	// Vertex Shader
+	Normal = mat3(model) * inNormal; // Use this if the model matrix has no non-uniform scaling
     fragTexCoord = inTexCoord;
     gl_Position = viewProjection * model * vec4(inPosition, 1.0);
 }
@@ -113,7 +113,12 @@ func Init(width, height int32) {
 	}
 
 	gl.Enable(gl.DEPTH_TEST)
-	gl.DepthFunc(gl.LEQUAL)
+	// Culling : https://learnopengl.com/Advanced-OpenGL/Face-culling
+	gl.Enable(gl.CULL_FACE)
+	// IF FACES OF THE MODEL ARE RENDERED IN THE WRONG ORDER, TRY SWITCHING THE FOLLOWING LINE TO gl.CCW or we need to make sure the winding of each model is consistent
+	// CCW = Counter ClockWise
+	gl.CullFace(gl.FRONT)
+	gl.FrontFace(gl.CW)
 	gl.Viewport(0, 0, width, height)
 	initOpenGL()
 }
@@ -195,7 +200,7 @@ func Render(camera Camera, deltaTime float64, light Light) {
 		// Set the sampler to the first texture unit
 		gl.Uniform1i(textureUniform, 0)
 
-		RotateModel(model, 1, 1, 0)
+		RotateModel(model, 0, 1, 0)
 		gl.DrawElements(gl.TRIANGLES, int32(len(model.Faces)), gl.UNSIGNED_INT, nil)
 
 	}
@@ -253,50 +258,6 @@ func genShaderProgram(vertexShader, fragmentShader uint32) uint32 {
 	gl.DetachShader(program, fragmentShader)
 	gl.DeleteShader(fragmentShader)
 	return program
-}
-
-func parseVertex(parts []string) ([]float32, error) {
-	var vertex []float32
-	for _, part := range parts {
-		val, err := strconv.ParseFloat(part, 32)
-		if err != nil {
-			return nil, fmt.Errorf("Invalid vertex value %v: %v", part, err)
-		}
-		vertex = append(vertex, float32(val))
-	}
-	return vertex, nil
-}
-
-func parseFace(parts []string) ([]int32, error) {
-	var face []int32
-	for _, part := range parts {
-		vals := strings.Split(part, "/")
-		idx, err := strconv.ParseInt(vals[0], 10, 32)
-		if err != nil {
-			return nil, fmt.Errorf("Invalid face index %v: %v", vals[0], err)
-		}
-		face = append(face, int32(idx-1)) // .obj indices start at 1, not 0
-	}
-
-	// Convert quads to triangles
-	if len(face) == 4 {
-		return []int32{face[0], face[1], face[2], face[0], face[2], face[3]}, nil
-	} else {
-		return face, nil
-	}
-}
-
-// for 2D textures
-func parseTextureCoordinate(parts []string) ([]float32, error) {
-	var texCoord []float32
-	for _, part := range parts {
-		val, err := strconv.ParseFloat(part, 32)
-		if err != nil {
-			return nil, fmt.Errorf("Invalid texture coordinate value %v: %v", part, err)
-		}
-		texCoord = append(texCoord, float32(val))
-	}
-	return texCoord, nil
 }
 
 func RotateModel(model *Model, angleX, angleY float32, angleZ float32) {

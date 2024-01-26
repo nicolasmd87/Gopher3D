@@ -24,12 +24,12 @@ func main() {
 	engine.Render(768, 50, nil)
 }
 func (mb *GoCraftBehaviour) Start() {
-	model, err := loader.LoadObjectWithPath("tmp/examples/GoCraft/Cube.obj")
+	model, err := loader.LoadObjectWithPath("../../tmp/examples/GoCraft/Cube.obj")
 	if err != nil {
 		fmt.Println("Error loading model")
 	}
 	renderer.AddModel(model)
-	renderer.SetTexture("tmp/textures/2k_mars.jpg", model)
+	renderer.SetTexture("../../tmp/textures/2k_mars.jpg", model)
 	fmt.Println("Behaviour started:", mb.name)
 }
 

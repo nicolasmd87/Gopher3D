@@ -1,7 +1,9 @@
 package main
 
 import (
-	"Gopher3D/renderer"
+	"Gopher3D/internal/engine"
+	"Gopher3D/internal/loader"
+	"Gopher3D/internal/renderer"
 	"fmt"
 	"path/filepath"
 
@@ -108,10 +110,11 @@ func createTree() *widget.Tree {
 	return tree
 }
 
+// TODO - remove the model channel and substitute it with a simple function renderer.AddModel(model *renderer.Model)
 func main() {
 	app := app.New()
 	window := app.NewWindow("Gopher 3D")
-	gopher := NewGopher()
+	gopher := engine.NewGopher()
 	window.Resize(fyne.NewSize(1024, 768))
 
 	tree = createTree() // Initialize the tree
@@ -128,7 +131,7 @@ func main() {
 			defer reader.Close()
 
 			filePath := reader.URI().Path()
-			model, err := renderer.LoadObjectWithPath(filePath)
+			model, err := loader.LoadObjectWithPath(filePath)
 			if err != nil {
 				dialog.ShowError(err, window)
 				return

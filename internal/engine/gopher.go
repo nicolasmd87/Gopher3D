@@ -1,7 +1,8 @@
-package main
+package engine
 
 import (
-	"Gopher3D/renderer"
+	behaviour "Gopher3D/internal/Behaviour"
+	"Gopher3D/internal/renderer"
 	"log"
 	"runtime"
 	"time"
@@ -12,21 +13,21 @@ import (
 
 var COLOR_ACTIVECAPTION int32 = 2
 
-var width, height int32 = 800, 600                                 // Initialize to the center of the window
+var width, height int32 = 1024, 768                                // Initialize to the center of the window
 var lastX, lastY float64 = float64(width / 2), float64(height / 2) // Initialize to the center of the window
 var firstMouse bool = true
 var camera renderer.Camera
 var refreshRate time.Duration = 1000 / 144 // 144 FPS
 
-type gopher struct {
+type Gopher struct {
 	window *glfw.Window
 }
 
-func NewGopher() *gopher {
-	return &gopher{}
+func NewGopher() *Gopher {
+	return &Gopher{}
 }
 
-func (gopher *gopher) Render(x, y int, modelChan chan *renderer.Model) {
+func (gopher *Gopher) Render(x, y int, modelChan chan *renderer.Model) {
 	runtime.LockOSThread()
 
 	if err := glfw.Init(); err != nil {
@@ -71,7 +72,8 @@ func (gopher *gopher) Render(x, y int, modelChan chan *renderer.Model) {
 		deltaTime := currentTime - lastTime
 		lastTime = currentTime
 		camera.ProcessKeyboard(window, float32(deltaTime))
-		renderer.Render(camera, deltaTime, light) // Pass the dereferenced camera object to Render
+		behaviour.GlobalBehaviourManager.UpdateAll() // Update all behaviors
+		renderer.Render(camera, deltaTime, light)    // Pass the dereferenced camera object to Render
 
 		window.SwapBuffers()
 		glfw.PollEvents()
@@ -80,9 +82,9 @@ func (gopher *gopher) Render(x, y int, modelChan chan *renderer.Model) {
 		select {
 		case model := <-modelChan:
 			renderer.AddModel(model)
-			//renderer.SetTexture("../textures/DirtMetal.jpg", model)
-			//renderer.SetTexture("../textures/Earth.jpg", model)
-			renderer.SetTexture("../textures/2k_mars.jpg", model)
+			//renderer.SetTexture("tmp/textures/DirtMetal.jpg", model)
+			//renderer.SetTexture("tmp/textures/Earth.jpg", model)
+			renderer.SetTexture("tmp/textures/2k_mars.jpg", model)
 		case <-time.After(refreshRate):
 			continue
 		}

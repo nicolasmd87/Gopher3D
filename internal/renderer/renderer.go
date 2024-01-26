@@ -162,7 +162,7 @@ func AddModel(model *Model) {
 	gl.VertexAttribPointer(1, 2, gl.FLOAT, false, stride, gl.PtrOffset(3*4))
 	gl.EnableVertexAttribArray(1)
 
-	gl.VertexAttribPointer(2, 3, gl.FLOAT, false, stride, gl.PtrOffset(20))
+	gl.VertexAttribPointer(2, 3, gl.FLOAT, false, stride, gl.PtrOffset(5*4))
 	gl.EnableVertexAttribArray(2)
 
 	model.VAO = vao
@@ -200,7 +200,7 @@ func Render(camera Camera, deltaTime float64, light Light) {
 		// Set the sampler to the first texture unit
 		gl.Uniform1i(textureUniform, 0)
 
-		RotateModel(model, 0, 1, 0)
+		//RotateModel(model, 0, 1, 0)
 		gl.DrawElements(gl.TRIANGLES, int32(len(model.Faces)), gl.UNSIGNED_INT, nil)
 
 	}
@@ -281,6 +281,11 @@ func CreateLight() Light {
 func SetTexture(texturePath string, model *Model) {
 	textureID, _ := loadTexture(texturePath)
 	model.TextureID = textureID // Store the texture ID in the Model struct
+}
+
+// SetPosition sets the position of the model
+func (m *Model) SetPosition(x, y, z float32) {
+	m.ModelMatrix = mgl32.Translate3D(x, y, z)
 }
 
 func loadTexture(filePath string) (uint32, error) { // Consider specifying image format or handling different formats properly

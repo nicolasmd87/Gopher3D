@@ -46,6 +46,9 @@ fyne.io/fyne/v2/widget
 fyne.io/systray
 fyne.io/systray/internal/generated/menu
 fyne.io/systray/internal/generated/notifier
+# github.com/aquilax/go-perlin v1.1.0
+## explicit; go 1.13
+github.com/aquilax/go-perlin
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew

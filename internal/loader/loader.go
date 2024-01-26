@@ -13,7 +13,7 @@ import (
 )
 
 func LoadObjectWithPath(Path string) (*renderer.Model, error) {
-	fmt.Println("Loading object from path: " + Path)
+	//	fmt.Println("Loading object from path: " + Path)
 	model, err := LoadModel(Path)
 	return model, err
 }

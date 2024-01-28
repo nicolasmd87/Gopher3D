@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/draw"
+	"math"
 	"os"
 	"strings"
 
@@ -12,16 +13,22 @@ import (
 )
 
 type Model struct {
-	Id            int
-	Vertices      []float32
-	Normals       []float32
-	Faces         []int32
-	TextureCoords []float32
-	TextureID     uint32
-	VAO           uint32 // Vertex Array Object
-	VBO           uint32 // Vertex Buffer Object
-	EBO           uint32 // Element Buffer Object
-	ModelMatrix   mgl32.Mat4
+	Id                   int
+	Position             mgl32.Vec3
+	Scale                mgl32.Vec3
+	Rotation             mgl32.Quat
+	Vertices             []float32
+	Normals              []float32
+	Faces                []int32
+	TextureCoords        []float32
+	InterleavedData      []float32
+	TextureID            uint32
+	VAO                  uint32 // Vertex Array Object
+	VBO                  uint32 // Vertex Buffer Object
+	EBO                  uint32 // Element Buffer Object
+	ModelMatrix          mgl32.Mat4
+	BoundingSphereCenter mgl32.Vec3
+	BoundingSphereRadius float32
 }
 
 var (
@@ -112,13 +119,6 @@ func Init(width, height int32) {
 		return
 	}
 
-	gl.Enable(gl.DEPTH_TEST)
-	// Culling : https://learnopengl.com/Advanced-OpenGL/Face-culling
-	gl.Enable(gl.CULL_FACE)
-	// IF FACES OF THE MODEL ARE RENDERED IN THE WRONG ORDER, TRY SWITCHING THE FOLLOWING LINE TO gl.CCW or we need to make sure the winding of each model is consistent
-	// CCW = Counter ClockWise
-	gl.CullFace(gl.FRONT)
-	gl.FrontFace(gl.CW)
 	gl.Viewport(0, 0, width, height)
 	initOpenGL()
 }
@@ -148,7 +148,7 @@ func AddModel(model *Model) {
 	var vbo uint32
 	gl.GenBuffers(1, &vbo)
 	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
-	gl.BufferData(gl.ARRAY_BUFFER, len(model.Vertices)*4, gl.Ptr(model.Vertices), gl.STATIC_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, len(model.InterleavedData)*4, gl.Ptr(model.InterleavedData), gl.STATIC_DRAW)
 
 	var ebo uint32
 	gl.GenBuffers(1, &ebo)
@@ -184,26 +184,55 @@ func Render(camera Camera, deltaTime float64, light Light) {
 	viewProjection := camera.GetViewProjection()
 	gl.UseProgram(shaderProgram)
 	gl.UniformMatrix4fv(viewProjLoc, 1, false, &viewProjection[0])
+	gl.Uniform3f(lightPosLoc, light.Position[0], light.Position[1], light.Position[2])
+	gl.Uniform3f(lightColorLoc, light.Color[0], light.Color[1], light.Color[2])
+	gl.Uniform1f(lightIntensityLoc, light.Intensity)
+	// Get the uniform location of the texture sampler in your shader program
+	textureUniform := gl.GetUniformLocation(shaderProgram, gl.Str("uTexture\x00"))
+	gl.Enable(gl.DEPTH_TEST)
+	// Culling : https://learnopengl.com/Advanced-OpenGL/Face-culling
+	gl.Enable(gl.CULL_FACE)
+	// IF FACES OF THE MODEL ARE RENDERED IN THE WRONG ORDER, TRY SWITCHING THE FOLLOWING LINE TO gl.CCW or we need to make sure the winding of each model is consistent
+	// CCW = Counter ClockWise
+	gl.CullFace(gl.FRONT)
+	gl.FrontFace(gl.CW)
+
+	// Calculate frustum
+	frustum := camera.CalculateFrustum()
 	for _, model := range Models {
+		if !frustum.IntersectsSphere(model.BoundingSphereCenter, model.BoundingSphereRadius) {
+			continue // Skip rendering this model
+		}
+		// Calculate the model matrix for each model
+		model.ModelMatrix = CalculateModelMatrix(*model)
+
 		gl.BindVertexArray(model.VAO)
 		gl.UniformMatrix4fv(modelLoc, 1, false, &model.ModelMatrix[0])
-
-		gl.Uniform3f(lightPosLoc, light.Position[0], light.Position[1], light.Position[2])
-		gl.Uniform3f(lightColorLoc, light.Color[0], light.Color[1], light.Color[2])
-		gl.Uniform1f(lightIntensityLoc, light.Intensity)
 
 		// Activate the first texture unit and bind your texture
 		gl.ActiveTexture(gl.TEXTURE0)
 		gl.BindTexture(gl.TEXTURE_2D, model.TextureID)
-		// Get the uniform location of the texture sampler in your shader program
-		textureUniform := gl.GetUniformLocation(shaderProgram, gl.Str("uTexture\x00"))
+
 		// Set the sampler to the first texture unit
 		gl.Uniform1i(textureUniform, 0)
 
-		//RotateModel(model, 0, 1, 0)
 		gl.DrawElements(gl.TRIANGLES, int32(len(model.Faces)), gl.UNSIGNED_INT, nil)
-
 	}
+	// Disable culling after rendering
+	gl.Disable(gl.CULL_FACE)
+}
+
+// CalculateModelMatrix calculates the transformation matrix for a model
+func CalculateModelMatrix(model Model) mgl32.Mat4 {
+	// Start with an identity matrix
+	modelMatrix := mgl32.Ident4()
+
+	// Apply scale, rotation, and translation
+	modelMatrix = modelMatrix.Mul4(mgl32.Scale3D(model.Scale.X(), model.Scale.Y(), model.Scale.Z()))
+	modelMatrix = modelMatrix.Mul4(mgl32.Translate3D(model.Position.X(), model.Position.Y(), model.Position.Z()))
+	modelMatrix = modelMatrix.Mul4(model.Rotation.Mat4())
+
+	return modelMatrix
 }
 
 func Cleanup() {
@@ -259,17 +288,6 @@ func genShaderProgram(vertexShader, fragmentShader uint32) uint32 {
 	gl.DeleteShader(fragmentShader)
 	return program
 }
-
-func RotateModel(model *Model, angleX, angleY float32, angleZ float32) {
-	// Create rotation matrices for X and Y axes
-	rotationX := mgl32.HomogRotate3DX(mgl32.DegToRad(angleX))
-	rotationY := mgl32.HomogRotate3DY(mgl32.DegToRad(angleY))
-	rotationZ := mgl32.HomogRotate3DY(mgl32.DegToRad(angleZ))
-
-	// Apply the rotations to the model's ModelMatrix
-	model.ModelMatrix = model.ModelMatrix.Mul4(rotationX).Mul4(rotationY).Mul4(rotationZ)
-}
-
 func CreateLight() Light {
 	return Light{
 		Position:  mgl32.Vec3{0.0, 300.0, 0.0}, // Example position
@@ -278,14 +296,66 @@ func CreateLight() Light {
 	}
 }
 
-func SetTexture(texturePath string, model *Model) {
-	textureID, _ := loadTexture(texturePath)
-	model.TextureID = textureID // Store the texture ID in the Model struct
+func (model *Model) RotateModel(angleX, angleY float32, angleZ float32) {
+	// Create quaternions for each axis
+	rotationX := mgl32.QuatRotate(mgl32.DegToRad(angleX), mgl32.Vec3{1, 0, 0})
+	rotationY := mgl32.QuatRotate(mgl32.DegToRad(angleY), mgl32.Vec3{0, 1, 0})
+	rotationZ := mgl32.QuatRotate(mgl32.DegToRad(angleZ), mgl32.Vec3{0, 0, 1})
+
+	// Combine new rotation with existing rotation
+	model.Rotation = model.Rotation.Mul(rotationX).Mul(rotationY).Mul(rotationZ)
 }
 
 // SetPosition sets the position of the model
 func (m *Model) SetPosition(x, y, z float32) {
 	m.ModelMatrix = mgl32.Translate3D(x, y, z)
+	m.Position = mgl32.Vec3{x, y, z}
+	m.CalculateBoundingSphere()
+}
+
+func (m *Model) CalculateBoundingSphere() {
+	var center mgl32.Vec3
+	var maxDistanceSq float32
+
+	numVertices := len(m.Vertices) / 3 // Assuming 3 float32s per vertex
+	for i := 0; i < numVertices; i++ {
+		// Extracting vertex from the flat array
+		vertex := mgl32.Vec3{m.Vertices[i*3], m.Vertices[i*3+1], m.Vertices[i*3+2]}
+		transformedVertex := ApplyModelTransformation(vertex, m.Position, m.Scale, m.Rotation)
+		center = center.Add(transformedVertex)
+	}
+	center = center.Mul(1.0 / float32(numVertices))
+
+	for i := 0; i < numVertices; i++ {
+		vertex := mgl32.Vec3{m.Vertices[i*3], m.Vertices[i*3+1], m.Vertices[i*3+2]}
+		transformedVertex := ApplyModelTransformation(vertex, m.Position, m.Scale, m.Rotation)
+		distanceSq := transformedVertex.Sub(center).LenSqr()
+		if distanceSq > maxDistanceSq {
+			maxDistanceSq = distanceSq
+		}
+	}
+
+	m.BoundingSphereCenter = center
+	m.BoundingSphereRadius = float32(math.Sqrt(float64(maxDistanceSq)))
+}
+
+func ApplyModelTransformation(vertex, position, scale mgl32.Vec3, rotation mgl32.Quat) mgl32.Vec3 {
+	// Apply scaling
+	scaledVertex := mgl32.Vec3{vertex[0] * scale[0], vertex[1] * scale[1], vertex[2] * scale[2]}
+
+	// Apply rotation
+	// Note: mgl32.Quat doesn't directly multiply with Vec3, so we convert it to a Mat4 first
+	rotatedVertex := rotation.Mat4().Mul4x1(scaledVertex.Vec4(1)).Vec3()
+
+	// Apply translation
+	transformedVertex := rotatedVertex.Add(position)
+
+	return transformedVertex
+}
+
+func SetTexture(texturePath string, model *Model) {
+	textureID, _ := loadTexture(texturePath)
+	model.TextureID = textureID // Store the texture ID in the Model struct
 }
 
 func loadTexture(filePath string) (uint32, error) { // Consider specifying image format or handling different formats properly

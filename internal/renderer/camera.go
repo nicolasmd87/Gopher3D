@@ -24,6 +24,15 @@ type Camera struct {
 	firstMouse   bool
 }
 
+type Plane struct {
+	Normal   mgl32.Vec3
+	Distance float32
+}
+
+type Frustum struct {
+	Planes [6]Plane
+}
+
 func NewCamera(height int32, width int32) Camera {
 	camera := Camera{
 		position:    mgl32.Vec3{1, 0, 200},
@@ -116,4 +125,68 @@ func (c *Camera) updateCameraVectors() {
 	c.front = front.Normalize()
 	c.right = c.front.Cross(c.worldUp).Normalize()
 	c.up = c.right.Cross(c.front).Normalize()
+}
+
+func (c *Camera) CalculateFrustum() Frustum {
+	var frustum Frustum
+	vp := c.GetViewProjection()
+
+	// Left Plane
+	frustum.Planes[0] = Plane{
+		Normal:   mgl32.Vec3{vp[3] + vp[0], vp[7] + vp[4], vp[11] + vp[8]},
+		Distance: vp[15] + vp[12],
+	}
+
+	// Right Plane
+	frustum.Planes[1] = Plane{
+		Normal:   mgl32.Vec3{vp[3] - vp[0], vp[7] - vp[4], vp[11] - vp[8]},
+		Distance: vp[15] - vp[12],
+	}
+
+	// Bottom Plane
+	frustum.Planes[2] = Plane{
+		Normal:   mgl32.Vec3{vp[3] + vp[1], vp[7] + vp[5], vp[11] + vp[9]},
+		Distance: vp[15] + vp[13],
+	}
+
+	// Top Plane
+	frustum.Planes[3] = Plane{
+		Normal:   mgl32.Vec3{vp[3] - vp[1], vp[7] - vp[5], vp[11] - vp[9]},
+		Distance: vp[15] - vp[13],
+	}
+
+	// Near Plane
+	frustum.Planes[4] = Plane{
+		Normal:   mgl32.Vec3{vp[3] + vp[2], vp[7] + vp[6], vp[11] + vp[10]},
+		Distance: vp[15] + vp[14],
+	}
+
+	// Far Plane
+	frustum.Planes[5] = Plane{
+		Normal:   mgl32.Vec3{vp[3] - vp[2], vp[7] - vp[6], vp[11] - vp[10]},
+		Distance: vp[15] - vp[14],
+	}
+
+	// Normalize the planes
+	for i := 0; i < 6; i++ {
+		length := frustum.Planes[i].Normal.Len()
+		frustum.Planes[i].Normal = frustum.Planes[i].Normal.Mul(1.0 / length)
+		frustum.Planes[i].Distance /= length
+	}
+
+	return frustum
+}
+
+func (p *Plane) DistanceToPoint(point mgl32.Vec3) float32 {
+	return p.Normal.Dot(point) + p.Distance
+}
+
+func (f *Frustum) IntersectsSphere(center mgl32.Vec3, radius float32) bool {
+	// Check if the sphere intersects with the frustum
+	for _, plane := range f.Planes {
+		if plane.DistanceToPoint(center) < -radius {
+			return false // Sphere is outside the frustum
+		}
+	}
+	return true
 }

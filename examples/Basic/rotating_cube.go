@@ -6,9 +6,10 @@ import (
 	loader "Gopher3D/internal/Loader"
 	"Gopher3D/internal/engine"
 	"Gopher3D/internal/renderer"
-	"fmt"
 	"math/rand"
 	"time"
+
+	mgl "github.com/go-gl/mathgl/mgl32"
 
 	perlin "github.com/aquilax/go-perlin" // Example Perlin noise library
 )
@@ -16,8 +17,9 @@ import (
 var p = perlin.NewPerlin(2, 2, 3, rand.New(rand.NewSource(time.Now().UnixNano())).Int63())
 
 type GoCraftBehaviour struct {
-	engine *engine.Gopher
-	name   string
+	engine     *engine.Gopher
+	name       string
+	SceneModel *renderer.Model
 }
 
 func NewGocraftBehaviour(engine *engine.Gopher) {
@@ -30,38 +32,25 @@ func main() {
 	engine.Render(768, 50, nil)
 }
 func (mb *GoCraftBehaviour) Start() {
-	createWorld()
-	fmt.Println("Behaviour started:", mb.name)
+	createWorld(mb)
 }
 
 func (mb *GoCraftBehaviour) Update() {
-
-}
-
-// May take a while to load, this is until we fix perfomance issues, this is a good benchmark in the meantime
-func createWorld() {
-	model, _ := loader.LoadObjectWithPath("../../tmp/examples/GoCraft/Blatt.obj")
-	renderer.SetTexture("../../tmp/textures/Blatt.png", model)
-
-	for x := 0; x < 500; x++ {
-		for z := 0; z < 500; z++ {
-			spawnBlock(*model, x, z)
-		}
+	if mb.SceneModel != nil {
+		mb.SceneModel.RotateModel(1.0, 0.0, 0.0)
 	}
 }
 
-func spawnBlock(model renderer.Model, x, z int) {
-
-	renderer.AddModel(&model)
-
-	y := p.Noise2D(float64(x)*0.1, float64(z)*0.1) // Adjust the multiplier for resolution
-	// Get Perlin noise value
-	y = scaleNoise(y) // Scale the noise value to your game's scale
-	model.SetPosition(float32(x), float32(y), float32(z))
+// May take a while to load, this is until we fix perfomance issues, this is a good benchmark in the meantime
+func createWorld(mb *GoCraftBehaviour) {
+	model, _ := loader.LoadObjectWithPath("../../tmp/examples/GoCraft/Blatt.obj")
+	renderer.SetTexture("../../tmp/textures/Blatt.png", model)
+	mb.SceneModel = model
+	spawnBlock(mb.SceneModel, 0, 0)
 }
 
-func scaleNoise(noiseVal float64) float64 {
-	// Scale and adjust the noise value to suit the height range of your terrain
-	// Example: scale between 0 and 10
-	return (noiseVal + 1) / 2 * 10
+func spawnBlock(model *renderer.Model, x, z int) {
+	model.SetPosition(0, 0, 0)
+	model.Scale = mgl.Vec3{20.0, 20.0, 20.0}
+	renderer.AddModel(model)
 }

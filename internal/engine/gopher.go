@@ -67,24 +67,22 @@ func (gopher *Gopher) Render(x, y int, modelChan chan *renderer.Model) {
 	renderer.Debug = false
 
 	var lastTime = glfw.GetTime()
+	// TODO: Frame limiter - timer.sleep(remaining time to complete frame)
 	for !window.ShouldClose() {
 		currentTime := glfw.GetTime()
 		deltaTime := currentTime - lastTime
 		lastTime = currentTime
 		camera.ProcessKeyboard(window, float32(deltaTime))
 		behaviour.GlobalBehaviourManager.UpdateAll() // Update all behaviors
-		renderer.Render(camera, deltaTime, light)    // Pass the dereferenced camera object to Render
+		renderer.Render(camera, deltaTime, light)
 
 		window.SwapBuffers()
 		glfw.PollEvents()
 
-		time.Sleep(refreshRate * time.Millisecond)
 		select {
 		case model := <-modelChan:
 			renderer.AddModel(model)
-			//renderer.SetTexture("tmp/textures/DirtMetal.jpg", model)
-			//renderer.SetTexture("tmp/textures/Earth.jpg", model)
-			renderer.SetTexture("tmp/textures/2k_mars.jpg", model)
+			renderer.SetTexture("../tmp/textures/2k_mars.jpg", model)
 		case <-time.After(refreshRate):
 			continue
 		}

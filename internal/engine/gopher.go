@@ -78,7 +78,6 @@ func (gopher *Gopher) Render(x, y int, modelChan chan *renderer.Model) {
 		window.SwapBuffers()
 		glfw.PollEvents()
 
-		time.Sleep(refreshRate * time.Millisecond)
 		select {
 		case model := <-modelChan:
 			renderer.AddModel(model)

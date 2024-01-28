@@ -10,10 +10,11 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/go-gl/mathgl/mgl32"
 )
 
 func LoadObjectWithPath(Path string) (*renderer.Model, error) {
-	//	fmt.Println("Loading object from path: " + Path)
 	model, err := LoadModel(Path)
 	return model, err
 }
@@ -104,10 +105,14 @@ func LoadModel(filename string) (*renderer.Model, error) {
 	}
 
 	model := &renderer.Model{
-		Vertices: interleavedData,
-		Faces:    faces,
+		InterleavedData: interleavedData,
+		Vertices:        vertices,
+		Faces:           faces,
 	}
-
+	model.Position = [3]float32{0, 0, 0}
+	model.Rotation = mgl32.Quat{}
+	model.Scale = [3]float32{1, 1, 1}
+	model.CalculateBoundingSphere()
 	return model, nil
 }
 

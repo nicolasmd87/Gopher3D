@@ -27,7 +27,7 @@ func NewGocraftBehaviour(engine *engine.Gopher) {
 func main() {
 	engine := engine.NewGopher()
 	NewGocraftBehaviour(engine)
-	engine.Render(768, 50)
+	engine.Render(768, 50, nil)
 }
 func (mb *GoCraftBehaviour) Start() {
 	createWorld()

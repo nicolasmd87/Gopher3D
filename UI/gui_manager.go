@@ -16,9 +16,9 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-var modelChan = make(chan *renderer.Model)
 var objectNames []string // Global slice to store object names
 var tree *widget.Tree
+var modelChan = make(chan *renderer.Model)
 
 type GameObject struct {
 	Name     string
@@ -110,7 +110,6 @@ func createTree() *widget.Tree {
 	return tree
 }
 
-// TODO - remove the model channel and substitute it with a simple function renderer.AddModel(model *renderer.Model)
 func main() {
 	app := app.New()
 	window := app.NewWindow("Gopher 3D")
@@ -137,10 +136,8 @@ func main() {
 				return
 			}
 			modelChan <- model
-
 			objectName := filepath.Base(filePath)
 			AddParentNode(objectName)
-
 		}, window)
 
 		fd.SetFilter(storage.NewExtensionFileFilter([]string{".obj"}))

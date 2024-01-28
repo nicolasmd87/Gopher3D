@@ -82,9 +82,7 @@ func (gopher *Gopher) Render(x, y int, modelChan chan *renderer.Model) {
 		select {
 		case model := <-modelChan:
 			renderer.AddModel(model)
-			//renderer.SetTexture("tmp/textures/DirtMetal.jpg", model)
-			//renderer.SetTexture("tmp/textures/Earth.jpg", model)
-			renderer.SetTexture("tmp/textures/2k_mars.jpg", model)
+			renderer.SetTexture("../tmp/textures/2k_mars.jpg", model)
 		case <-time.After(refreshRate):
 			continue
 		}

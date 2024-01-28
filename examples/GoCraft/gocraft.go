@@ -27,10 +27,9 @@ func NewGocraftBehaviour(engine *engine.Gopher) {
 func main() {
 	engine := engine.NewGopher()
 	NewGocraftBehaviour(engine)
-	engine.Render(768, 50, nil)
+	engine.Render(768, 50)
 }
 func (mb *GoCraftBehaviour) Start() {
-	//fmt.Println("Perlin:", p)
 	createWorld()
 	fmt.Println("Behaviour started:", mb.name)
 }

@@ -203,6 +203,9 @@ func Render(camera Camera, deltaTime float64, light Light) {
 		if !frustum.IntersectsSphere(model.BoundingSphereCenter, model.BoundingSphereRadius) {
 			continue // Skip rendering this model
 		}
+		// Calculate the model matrix for each model
+		model.ModelMatrix = CalculateModelMatrix(*model)
+
 		gl.BindVertexArray(model.VAO)
 		gl.UniformMatrix4fv(modelLoc, 1, false, &model.ModelMatrix[0])
 
@@ -213,11 +216,23 @@ func Render(camera Camera, deltaTime float64, light Light) {
 		// Set the sampler to the first texture unit
 		gl.Uniform1i(textureUniform, 0)
 
-		//RotateModel(model, 0, 1, 0)
 		gl.DrawElements(gl.TRIANGLES, int32(len(model.Faces)), gl.UNSIGNED_INT, nil)
 	}
 	// Disable culling after rendering
 	gl.Disable(gl.CULL_FACE)
+}
+
+// CalculateModelMatrix calculates the transformation matrix for a model
+func CalculateModelMatrix(model Model) mgl32.Mat4 {
+	// Start with an identity matrix
+	modelMatrix := mgl32.Ident4()
+
+	// Apply scale, rotation, and translation
+	modelMatrix = modelMatrix.Mul4(mgl32.Scale3D(model.Scale.X(), model.Scale.Y(), model.Scale.Z()))
+	modelMatrix = modelMatrix.Mul4(mgl32.Translate3D(model.Position.X(), model.Position.Y(), model.Position.Z()))
+	modelMatrix = modelMatrix.Mul4(model.Rotation.Mat4())
+
+	return modelMatrix
 }
 
 func Cleanup() {
@@ -282,13 +297,13 @@ func CreateLight() Light {
 }
 
 func (model *Model) RotateModel(angleX, angleY float32, angleZ float32) {
-	// Create rotation matrices for X and Y axes
-	rotationX := mgl32.HomogRotate3DX(mgl32.DegToRad(angleX))
-	rotationY := mgl32.HomogRotate3DY(mgl32.DegToRad(angleY))
-	rotationZ := mgl32.HomogRotate3DY(mgl32.DegToRad(angleZ))
+	// Create quaternions for each axis
+	rotationX := mgl32.QuatRotate(mgl32.DegToRad(angleX), mgl32.Vec3{1, 0, 0})
+	rotationY := mgl32.QuatRotate(mgl32.DegToRad(angleY), mgl32.Vec3{0, 1, 0})
+	rotationZ := mgl32.QuatRotate(mgl32.DegToRad(angleZ), mgl32.Vec3{0, 0, 1})
 
-	// Apply the rotations to the model's ModelMatrix
-	model.ModelMatrix = model.ModelMatrix.Mul4(rotationX).Mul4(rotationY).Mul4(rotationZ)
+	// Combine new rotation with existing rotation
+	model.Rotation = model.Rotation.Mul(rotationX).Mul(rotationY).Mul(rotationZ)
 }
 
 // SetPosition sets the position of the model

@@ -95,7 +95,12 @@ func LoadModel(filename string) (*renderer.Model, error) {
 	}
 	for len(normals)/3 < vertexCount {
 		normals = append(normals, 0, 0, 0)
+
 	}
+
+	// Some models have broken normals, so we recalculate them ourselves
+	// TODO: Add an option while importing the model
+	normals = RecalculateNormals(vertices, faces)
 
 	interleavedData := make([]float32, 0, vertexCount*8)
 	for i := 0; i < vertexCount; i++ {
@@ -109,6 +114,7 @@ func LoadModel(filename string) (*renderer.Model, error) {
 		Vertices:        vertices,
 		Faces:           faces,
 	}
+
 	model.Position = [3]float32{0, 0, 0}
 	model.Rotation = mgl32.Quat{}
 	model.Scale = [3]float32{1, 1, 1}
@@ -158,4 +164,38 @@ func parseTextureCoordinate(parts []string) ([]float32, error) {
 		texCoord = append(texCoord, float32(val))
 	}
 	return texCoord, nil
+}
+
+func RecalculateNormals(vertices []float32, faces []int32) []float32 {
+	var normals = make([]float32, len(vertices))
+
+	// Calculate normals for each face
+	for i := 0; i < len(faces); i += 3 {
+		idx0 := faces[i] * 3
+		idx1 := faces[i+1] * 3
+		idx2 := faces[i+2] * 3
+
+		v0 := mgl32.Vec3{vertices[idx0], vertices[idx0+1], vertices[idx0+2]}
+		v1 := mgl32.Vec3{vertices[idx1], vertices[idx1+1], vertices[idx1+2]}
+		v2 := mgl32.Vec3{vertices[idx2], vertices[idx2+1], vertices[idx2+2]}
+
+		edge1 := v1.Sub(v0)
+		edge2 := v2.Sub(v0)
+		normal := edge1.Cross(edge2).Normalize()
+
+		// Add this normal to each vertex's normals and average them
+		for j := 0; j < 3; j++ {
+			normals[idx0+int32(j)] += normal[j]
+			normals[idx1+int32(j)] += normal[j]
+			normals[idx2+int32(j)] += normal[j]
+		}
+	}
+
+	// Normalize the normals
+	for i := 0; i < len(normals); i += 3 {
+		normal := mgl32.Vec3{normals[i], normals[i+1], normals[i+2]}.Normalize()
+		normals[i], normals[i+1], normals[i+2] = normal[0], normal[1], normal[2]
+	}
+
+	return normals
 }

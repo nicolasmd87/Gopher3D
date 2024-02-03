@@ -14,8 +14,8 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 )
 
-func LoadObjectWithPath(Path string) (*renderer.Model, error) {
-	model, err := LoadModel(Path)
+func LoadObjectWithPath(Path string, recalculateNormals bool) (*renderer.Model, error) {
+	model, err := LoadModel(Path, recalculateNormals)
 	return model, err
 }
 
@@ -27,7 +27,7 @@ func LoadObject() *renderer.Model {
 
 	for _, file := range files {
 		if !file.IsDir() && strings.HasSuffix(file.Name(), ".obj") {
-			model, err := LoadModel("../obj/" + file.Name())
+			model, err := LoadModel("../obj/"+file.Name(), true)
 			if err != nil {
 				log.Fatalf("Could not load the obj file %s: %v", file.Name(), err)
 			}
@@ -37,7 +37,7 @@ func LoadObject() *renderer.Model {
 	return nil
 }
 
-func LoadModel(filename string) (*renderer.Model, error) {
+func LoadModel(filename string, recalculateNormals bool) (*renderer.Model, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err
@@ -103,8 +103,9 @@ func LoadModel(filename string) (*renderer.Model, error) {
 	}
 
 	// Some models have broken normals, so we recalculate them ourselves
-	// TODO: Add an option while importing the model
-	normals = RecalculateNormals(vertices, faces)
+	if recalculateNormals {
+		normals = RecalculateNormals(vertices, faces)
+	}
 
 	interleavedData := make([]float32, 0, vertexCount*8)
 	for i := 0; i < vertexCount; i++ {

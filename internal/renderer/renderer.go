@@ -29,6 +29,8 @@ type Model struct {
 	ModelMatrix          mgl32.Mat4
 	BoundingSphereCenter mgl32.Vec3
 	BoundingSphereRadius float32
+	IsDirty              bool
+	IsBatched            bool
 }
 
 var (
@@ -174,13 +176,16 @@ func AddModel(model *Model) {
 }
 
 func Render(camera Camera, deltaTime float64, light Light) {
+	var currentTextureID uint32
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+
 	if Debug {
 		gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 	} else {
 		// Switch back to solid fill mode
 		gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
 	}
-	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+
 	viewProjection := camera.GetViewProjection()
 	gl.UseProgram(shaderProgram)
 	gl.UniformMatrix4fv(viewProjLoc, 1, false, &viewProjection[0])
@@ -203,15 +208,26 @@ func Render(camera Camera, deltaTime float64, light Light) {
 		if !frustum.IntersectsSphere(model.BoundingSphereCenter, model.BoundingSphereRadius) {
 			continue // Skip rendering this model
 		}
-		// Calculate the model matrix for each model
-		model.ModelMatrix = CalculateModelMatrix(*model)
 
-		gl.BindVertexArray(model.VAO)
-		gl.UniformMatrix4fv(modelLoc, 1, false, &model.ModelMatrix[0])
+		if !model.IsBatched {
+			if model.IsDirty {
+				// Recalculate the model matrix only if necessary
+				model.ModelMatrix = CalculateModelMatrix(*model)
+				model.IsDirty = false
+			}
+			// Upload the model matrix to the GPU
+			gl.UniformMatrix4fv(modelLoc, 1, false, &model.ModelMatrix[0])
+		} else {
+			// For batched models, you might use an identity matrix or skip setting the model matrix altogether.
+			// This depends on whether you pre-transform your vertices or not.
+			var identityMatrix = mgl32.Ident4()
+			gl.UniformMatrix4fv(modelLoc, 1, false, &identityMatrix[0])
+		}
 
-		// Activate the first texture unit and bind your texture
-		gl.ActiveTexture(gl.TEXTURE0)
-		gl.BindTexture(gl.TEXTURE_2D, model.TextureID)
+		if model.TextureID != currentTextureID {
+			gl.BindTexture(gl.TEXTURE_2D, model.TextureID)
+			currentTextureID = model.TextureID
+		}
 
 		// Set the sampler to the first texture unit
 		gl.Uniform1i(textureUniform, 0)
@@ -296,14 +312,15 @@ func CreateLight() Light {
 	}
 }
 
-func (model *Model) RotateModel(angleX, angleY float32, angleZ float32) {
+func (m *Model) RotateModel(angleX, angleY float32, angleZ float32) {
 	// Create quaternions for each axis
 	rotationX := mgl32.QuatRotate(mgl32.DegToRad(angleX), mgl32.Vec3{1, 0, 0})
 	rotationY := mgl32.QuatRotate(mgl32.DegToRad(angleY), mgl32.Vec3{0, 1, 0})
 	rotationZ := mgl32.QuatRotate(mgl32.DegToRad(angleZ), mgl32.Vec3{0, 0, 1})
 
 	// Combine new rotation with existing rotation
-	model.Rotation = model.Rotation.Mul(rotationX).Mul(rotationY).Mul(rotationZ)
+	m.Rotation = m.Rotation.Mul(rotationX).Mul(rotationY).Mul(rotationZ)
+	m.IsDirty = true
 }
 
 // SetPosition sets the position of the model
@@ -311,6 +328,7 @@ func (m *Model) SetPosition(x, y, z float32) {
 	m.ModelMatrix = mgl32.Translate3D(x, y, z)
 	m.Position = mgl32.Vec3{x, y, z}
 	m.CalculateBoundingSphere()
+	m.IsDirty = true
 }
 
 func (m *Model) CalculateBoundingSphere() {

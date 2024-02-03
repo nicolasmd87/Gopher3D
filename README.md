@@ -1,5 +1,6 @@
 # Gopher3D
-An open source 3D engine written in Go
+An open-source 3D engine written in Go 
+Note: This is a very early version, right now it's not more than a POC.
 
 ## How to run
 

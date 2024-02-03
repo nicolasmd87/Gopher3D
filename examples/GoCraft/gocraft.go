@@ -43,8 +43,8 @@ func createWorld() {
 	model, _ := loader.LoadObjectWithPath("../../tmp/examples/GoCraft/Cube.obj")
 	renderer.SetTexture("../../tmp/textures/Blatt.png", model)
 
-	for x := 0; x < 500; x++ {
-		for z := 0; z < 500; z++ {
+	for x := 0; x < 1; x++ {
+		for z := 0; z < 1; z++ {
 			spawnBlock(*model, x, z)
 		}
 	}

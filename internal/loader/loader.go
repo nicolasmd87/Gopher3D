@@ -60,24 +60,28 @@ func LoadModel(filename string) (*renderer.Model, error) {
 		case "v":
 			vertex, err := parseVertex(parts[1:])
 			if err != nil {
+				fmt.Println("Error parsing vertex: ", err)
 				return nil, err
 			}
 			vertices = append(vertices, vertex...)
 		case "vn":
 			normal, err := parseVertex(parts[1:])
 			if err != nil {
+				fmt.Println("Error parsing normal: ", err)
 				return nil, err
 			}
 			normals = append(normals, normal...)
 		case "vt":
 			texCoord, err := parseTextureCoordinate(parts[1:])
 			if err != nil {
+				fmt.Println("Error parsing texture coordinate: ", err)
 				return nil, err
 			}
 			textureCoords = append(textureCoords, texCoord[0], texCoord[1])
 		case "f":
 			face, err := parseFace(parts[1:])
 			if err != nil {
+				fmt.Println("Error parsing face: ", err)
 				return nil, err
 			}
 			faces = append(faces, face...)
@@ -136,7 +140,14 @@ func parseVertex(parts []string) ([]float32, error) {
 
 func parseFace(parts []string) ([]int32, error) {
 	var face []int32
-	for _, part := range parts {
+	startIndex := 0
+
+	// Skip the first part if it's "f", adjusting for OBJ face definitions
+	if parts[0] == "f" {
+		startIndex = 1
+	}
+
+	for _, part := range parts[startIndex:] {
 		vals := strings.Split(part, "/")
 		idx, err := strconv.ParseInt(vals[0], 10, 32)
 		if err != nil {

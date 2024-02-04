@@ -109,10 +109,20 @@ void main() {
 } 
 ` + "\x00"
 
+type LightType int
+
+const (
+	STATIC_LIGHT LightType = iota
+	DYNAMIC_LIGHT
+)
+
 type Light struct {
-	Position  mgl32.Vec3
-	Color     mgl32.Vec3
-	Intensity float32
+	Position   mgl32.Vec3
+	Color      mgl32.Vec3
+	Intensity  float32
+	Type       LightType // "dynamic", "static
+	Mode       string    // "directional", "point", "spot"
+	Calculated bool
 }
 
 func Init(width, height int32) {
@@ -175,7 +185,7 @@ func AddModel(model *Model) {
 	Models = append(Models, model)
 }
 
-func Render(camera Camera, deltaTime float64, light Light) {
+func Render(camera Camera, deltaTime float64, light *Light) {
 	var currentTextureID uint32
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
@@ -189,9 +199,15 @@ func Render(camera Camera, deltaTime float64, light Light) {
 	viewProjection := camera.GetViewProjection()
 	gl.UseProgram(shaderProgram)
 	gl.UniformMatrix4fv(viewProjLoc, 1, false, &viewProjection[0])
-	gl.Uniform3f(lightPosLoc, light.Position[0], light.Position[1], light.Position[2])
-	gl.Uniform3f(lightColorLoc, light.Color[0], light.Color[1], light.Color[2])
-	gl.Uniform1f(lightIntensityLoc, light.Intensity)
+
+	if light.Mode == "static" && !light.Calculated {
+		// We only calculate it once to save performance
+		calculateLights(light)
+		light.Calculated = true
+	} else if !light.Calculated {
+		calculateLights(light)
+	}
+
 	// Get the uniform location of the texture sampler in your shader program
 	textureUniform := gl.GetUniformLocation(shaderProgram, gl.Str("uTexture\x00"))
 	gl.Enable(gl.DEPTH_TEST)
@@ -304,8 +320,8 @@ func genShaderProgram(vertexShader, fragmentShader uint32) uint32 {
 	gl.DeleteShader(fragmentShader)
 	return program
 }
-func CreateLight() Light {
-	return Light{
+func CreateLight() *Light {
+	return &Light{
 		Position:  mgl32.Vec3{0.0, 300.0, 0.0}, // Example position
 		Color:     mgl32.Vec3{1.0, 1.0, 1.0},   // White light
 		Intensity: 1.0,                         // Full intensity
@@ -413,4 +429,10 @@ func loadTexture(filePath string) (uint32, error) { // Consider specifying image
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 
 	return textureID, nil
+}
+
+func calculateLights(light *Light) {
+	gl.Uniform3f(lightPosLoc, light.Position[0], light.Position[1], light.Position[2])
+	gl.Uniform3f(lightColorLoc, light.Color[0], light.Color[1], light.Color[2])
+	gl.Uniform1f(lightIntensityLoc, light.Intensity)
 }

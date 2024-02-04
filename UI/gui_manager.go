@@ -114,6 +114,8 @@ func main() {
 	app := app.New()
 	window := app.NewWindow("Gopher 3D")
 	gopher := engine.NewGopher()
+	gopher.Light = renderer.CreateLight()
+	gopher.Light.Type = renderer.DYNAMIC_LIGHT
 	window.Resize(fyne.NewSize(1024, 768))
 
 	tree = createTree() // Initialize the tree
@@ -130,7 +132,7 @@ func main() {
 			defer reader.Close()
 
 			filePath := reader.URI().Path()
-			model, err := loader.LoadObjectWithPath(filePath)
+			model, err := loader.LoadObjectWithPath(filePath, true)
 			if err != nil {
 				dialog.ShowError(err, window)
 				return

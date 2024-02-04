@@ -6,7 +6,6 @@ import (
 	loader "Gopher3D/internal/Loader"
 	"Gopher3D/internal/engine"
 	"Gopher3D/internal/renderer"
-	"fmt"
 	"math/rand"
 	"time"
 
@@ -26,12 +25,19 @@ func NewGocraftBehaviour(engine *engine.Gopher) {
 }
 func main() {
 	engine := engine.NewGopher()
+
 	NewGocraftBehaviour(engine)
-	engine.Render(768, 50, nil)
+	engine.Light = renderer.CreateLight()
+	//Static light for some extra FPS
+	engine.Light.Type = renderer.STATIC_LIGHT
+	// FULLSCREEN
+	engine.Width = 1980
+	engine.Height = 1080
+	// WINDOW POS IN X,Y AND MODEL
+	engine.Render(0, 0, nil)
 }
 func (mb *GoCraftBehaviour) Start() {
 	createWorld()
-	fmt.Println("Behaviour started:", mb.name)
 }
 
 func (mb *GoCraftBehaviour) Update() {
@@ -43,8 +49,8 @@ func createWorld() {
 	model, _ := loader.LoadObjectWithPath("../../tmp/examples/GoCraft/Cube.obj", true)
 	renderer.SetTexture("../../tmp/textures/Blatt.png", model)
 
-	for x := 0; x < 500; x++ {
-		for z := 0; z < 500; z++ {
+	for x := 0; x < 5000; x++ {
+		for z := 0; z < 5000; z++ {
 			spawnBlock(*model, x, z)
 		}
 	}

@@ -13,21 +13,26 @@ import (
 
 var COLOR_ACTIVECAPTION int32 = 2
 
-var width, height int32 = 1024, 768                                // Initialize to the center of the window
-var lastX, lastY float64 = float64(width / 2), float64(height / 2) // Initialize to the center of the window
+// Initialize to the center of the window
+var lastX, lastY float64
 var firstMouse bool = true
 var camera renderer.Camera
 var refreshRate time.Duration = 1000 / 144 // 144 FPS
 
+// TODO: Separate window into an abtact class with width and height as fields
 type Gopher struct {
 	window *glfw.Window
+	Light  *renderer.Light
+	Width  int32
+	Height int32
 }
 
 func NewGopher() *Gopher {
-	return &Gopher{}
+	return &Gopher{Width: 1024, Height: 768}
 }
 
 func (gopher *Gopher) Render(x, y int, modelChan chan *renderer.Model) {
+	lastX, lastY = float64(gopher.Width/2), float64(gopher.Width/2)
 	runtime.LockOSThread()
 
 	if err := glfw.Init(); err != nil {
@@ -35,11 +40,10 @@ func (gopher *Gopher) Render(x, y int, modelChan chan *renderer.Model) {
 	}
 	defer glfw.Terminate()
 
-	light := renderer.CreateLight()
 	// Set GLFW window hints here
 	glfw.WindowHint(glfw.Decorated, glfw.True)
 	glfw.WindowHint(glfw.Resizable, glfw.True)
-	window, err := glfw.CreateWindow(int(width), int(height), "Gopher 3D", nil, nil)
+	window, err := glfw.CreateWindow(int(gopher.Width), int(gopher.Height), "Gopher 3D", nil, nil)
 
 	if err != nil {
 		log.Fatalf("Could not create glfw window: %v", err)
@@ -53,10 +57,10 @@ func (gopher *Gopher) Render(x, y int, modelChan chan *renderer.Model) {
 	// Set GLFW window position here using the passed-in position
 	window.SetPos(x, y)
 
-	renderer.Init(width, height)
+	renderer.Init(gopher.Width, gopher.Height)
 
 	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
-	camera = renderer.NewCamera(width, height) // Initialize the global camera variable
+	camera = renderer.NewCamera(gopher.Width, gopher.Height) // Initialize the global camera variable
 
 	//window.SetInputMode(glfw.CursorMode, glfw.CursorDisabled) // Hide and capture the cursor
 	window.SetInputMode(glfw.CursorMode, glfw.CursorNormal) // Set cursor to normal mode initially
@@ -74,7 +78,7 @@ func (gopher *Gopher) Render(x, y int, modelChan chan *renderer.Model) {
 		lastTime = currentTime
 		camera.ProcessKeyboard(window, float32(deltaTime))
 		behaviour.GlobalBehaviourManager.UpdateAll() // Update all behaviors
-		renderer.Render(camera, deltaTime, light)
+		renderer.Render(camera, deltaTime, gopher.Light)
 
 		window.SwapBuffers()
 		glfw.PollEvents()

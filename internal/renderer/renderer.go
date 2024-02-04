@@ -71,42 +71,34 @@ void main() {
 }
 ` + "\x00"
 
-var fragmentShaderSource = `#version 330 core
-in vec2 fragTexCoord; // Received from vertex shader
-in vec3 Normal;       // Received from vertex shader
-in vec3 FragPos;      // Received from vertex shader
+var fragmentShaderSource = `
+// Fragment Shader
+#version 330 core
+in vec2 fragTexCoord;
+in vec3 Normal;
+in vec3 FragPos;
 
 uniform sampler2D textureSampler;
-
-struct Light {
+uniform struct Light {
     vec3 position;
     vec3 color;
     float intensity;
-};
-
-uniform Light light;  // Light source uniform
-uniform vec3 viewPos; // Camera position (for future use)
-
+} light;
+uniform vec3 viewPos;
 out vec4 FragColor;
 
 void main() {
-    // Texture color
     vec4 texColor = texture(textureSampler, fragTexCoord);
-
-    // Ambient lighting
     float ambientStrength = 0.1;
     vec3 ambient = ambientStrength * light.color;
-
-    // Diffuse lighting
     vec3 norm = normalize(Normal);
     vec3 lightDir = normalize(light.position - FragPos);
     float diff = max(dot(norm, lightDir), 0.0);
     vec3 diffuse = diff * light.color;
-
-    // Combining the lighting components
     vec3 result = (ambient + diffuse) * light.intensity;
-    FragColor = vec4(result, 1.0) * texColor; // Modulate with texture color
-} 
+    FragColor = vec4(result, 1.0) * texColor;
+}
+
 ` + "\x00"
 
 type LightType int

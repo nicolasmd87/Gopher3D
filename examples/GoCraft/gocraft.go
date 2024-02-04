@@ -13,7 +13,6 @@ import (
 )
 
 var p = perlin.NewPerlin(2, 2, 3, rand.New(rand.NewSource(time.Now().UnixNano())).Int63())
-var modelChan = make(chan *renderer.Model, 1000000)
 
 type GoCraftBehaviour struct {
 	engine          *engine.Gopher
@@ -39,7 +38,7 @@ func main() {
 	engine.Height = 1080
 
 	// WINDOW POS IN X,Y AND MODEL
-	engine.Render(0, 0, modelChan)
+	engine.Render(0, 0)
 }
 func (mb *GoCraftBehaviour) Start() {
 	createWorld(mb)
@@ -54,10 +53,10 @@ func createWorld(mb *GoCraftBehaviour) {
 	model, _ := loader.LoadObjectWithPath("../../tmp/examples/GoCraft/Cube.obj", true)
 	renderer.SetTexture("../../tmp/textures/Blatt.png", model)
 	// Tweaks this params for fun
-	mb.worldHeight = 100
-	mb.worldWidth = 100
+	mb.worldHeight = 1000
+	mb.worldWidth = 1000
 	mb.noiseDistortion = 10
-	InitScene(mb, model, false)
+	InitScene(mb, model, true)
 }
 
 func InitScene(mb *GoCraftBehaviour, model *renderer.Model, debug bool) {
@@ -81,8 +80,8 @@ func InitScene(mb *GoCraftBehaviour, model *renderer.Model, debug bool) {
 
 func spawnBlock(mb *GoCraftBehaviour, model renderer.Model, x, z int) {
 
-	renderer.AddModel(&model)
-	//modelChan <- &model
+	//renderer.AddModel(&model)
+	mb.engine.ModelChan <- &model
 
 	y := p.Noise2D(float64(x)*0.1, float64(z)*0.1) // Adjust the multiplier for resolution
 	// Get Perlin noise value

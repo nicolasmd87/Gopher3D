@@ -3,6 +3,7 @@ package engine
 import (
 	behaviour "Gopher3D/internal/Behaviour"
 	"Gopher3D/internal/renderer"
+	"fmt"
 	"log"
 	"runtime"
 	"time"
@@ -21,17 +22,24 @@ var refreshRate time.Duration = 1000 / 144 // 144 FPS
 
 // TODO: Separate window into an abtact class with width and height as fields
 type Gopher struct {
-	window *glfw.Window
-	Light  *renderer.Light
-	Width  int32
-	Height int32
+	ModelChan      chan *renderer.Model
+	ModelBatchChan chan []*renderer.Model
+	window         *glfw.Window
+	Light          *renderer.Light
+	Width          int32
+	Height         int32
 }
 
 func NewGopher() *Gopher {
-	return &Gopher{Width: 1024, Height: 768}
+	return &Gopher{
+		Width:          1024,
+		Height:         768,
+		ModelChan:      make(chan *renderer.Model, 1000000),
+		ModelBatchChan: make(chan []*renderer.Model, 1000000),
+	}
 }
 
-func (gopher *Gopher) Render(x, y int, modelChan chan *renderer.Model) {
+func (gopher *Gopher) Render(x, y int) {
 	lastX, lastY = float64(gopher.Width/2), float64(gopher.Width/2)
 	runtime.LockOSThread()
 
@@ -71,6 +79,7 @@ func (gopher *Gopher) Render(x, y int, modelChan chan *renderer.Model) {
 	renderer.Debug = false
 
 	var lastTime = glfw.GetTime()
+
 	// TODO: Frame limiter - timer.sleep(remaining time to complete frame)
 	for !window.ShouldClose() {
 		currentTime := glfw.GetTime()
@@ -84,12 +93,16 @@ func (gopher *Gopher) Render(x, y int, modelChan chan *renderer.Model) {
 		glfw.PollEvents()
 
 		select {
-		case model := <-modelChan:
+		case model := <-gopher.ModelChan:
 			renderer.AddModel(model)
 			renderer.SetTexture("../tmp/textures/2k_mars.jpg", model)
+		case modelBatch := <-gopher.ModelBatchChan:
+			fmt.Println("Received model batch", modelBatch)
+			continue
 		case <-time.After(refreshRate):
 			continue
 		}
+
 	}
 }
 func mouseCallback(w *glfw.Window, xpos, ypos float64) {

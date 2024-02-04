@@ -18,7 +18,6 @@ import (
 
 var objectNames []string // Global slice to store object names
 var tree *widget.Tree
-var modelChan = make(chan *renderer.Model)
 
 type GameObject struct {
 	Name     string
@@ -137,7 +136,7 @@ func main() {
 				dialog.ShowError(err, window)
 				return
 			}
-			modelChan <- model
+			gopher.ModelChan <- model
 			objectName := filepath.Base(filePath)
 			AddParentNode(objectName)
 		}, window)
@@ -184,7 +183,7 @@ func main() {
 	content := fyne.NewContainerWithLayout(layout.NewBorderLayout(header, nil, nil, nil), header)
 
 	gap := 50
-	go gopher.Render(1024+gap, gap, modelChan)
+	go gopher.Render(1024+gap, gap)
 
 	window.SetContent(content)
 	window.ShowAndRun()

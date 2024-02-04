@@ -13,6 +13,7 @@ import (
 )
 
 var p = perlin.NewPerlin(2, 2, 3, rand.New(rand.NewSource(time.Now().UnixNano())).Int63())
+var modelBatch []*renderer.Model
 
 type GoCraftBehaviour struct {
 	engine          *engine.Gopher
@@ -56,7 +57,7 @@ func createWorld(mb *GoCraftBehaviour) {
 	mb.worldHeight = 1000
 	mb.worldWidth = 1000
 	mb.noiseDistortion = 10
-	InitScene(mb, model, true)
+	InitScene(mb, model, false)
 }
 
 func InitScene(mb *GoCraftBehaviour, model *renderer.Model, debug bool) {
@@ -73,20 +74,20 @@ func InitScene(mb *GoCraftBehaviour, model *renderer.Model, debug bool) {
 	for x := 0; x < mb.worldHeight; x++ {
 		for z := 0; z < mb.worldWidth; z++ {
 			spawnBlock(mb, *model, x, z)
+			//modelBatch = append(modelBatch, model)
 		}
 	}
 
 }
 
 func spawnBlock(mb *GoCraftBehaviour, model renderer.Model, x, z int) {
-
-	//renderer.AddModel(&model)
-	mb.engine.ModelChan <- &model
-
-	y := p.Noise2D(float64(x)*0.1, float64(z)*0.1) // Adjust the multiplier for resolution
-	// Get Perlin noise value
-	y = scaleNoise(mb, y) // Scale the noise value to your game's scale
+	y := p.Noise2D(float64(x)*0.1, float64(z)*0.1)
+	y = scaleNoise(mb, y)
 	model.SetPosition(float32(x), float32(y), float32(z))
+
+	renderer.AddModel(&model)
+	//mb.engine.ModelChan <- &model
+
 }
 
 func scaleNoise(mb *GoCraftBehaviour, noiseVal float64) float64 {

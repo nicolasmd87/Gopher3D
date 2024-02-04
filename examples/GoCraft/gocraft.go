@@ -13,10 +13,13 @@ import (
 )
 
 var p = perlin.NewPerlin(2, 2, 3, rand.New(rand.NewSource(time.Now().UnixNano())).Int63())
+var modelChan = make(chan *renderer.Model, 1000000)
 
 type GoCraftBehaviour struct {
-	engine *engine.Gopher
-	name   string
+	engine      *engine.Gopher
+	name        string
+	worldHeight int
+	worldWidth  int
 }
 
 func NewGocraftBehaviour(engine *engine.Gopher) {
@@ -34,10 +37,10 @@ func main() {
 	engine.Width = 1980
 	engine.Height = 1080
 	// WINDOW POS IN X,Y AND MODEL
-	engine.Render(0, 0, nil)
+	engine.Render(0, 0, modelChan)
 }
 func (mb *GoCraftBehaviour) Start() {
-	createWorld()
+	createWorld(mb)
 }
 
 func (mb *GoCraftBehaviour) Update() {
@@ -45,20 +48,37 @@ func (mb *GoCraftBehaviour) Update() {
 }
 
 // May take a while to load, this is until we fix perfomance issues, this is a good benchmark in the meantime
-func createWorld() {
+func createWorld(mb *GoCraftBehaviour) {
 	model, _ := loader.LoadObjectWithPath("../../tmp/examples/GoCraft/Cube.obj", true)
 	renderer.SetTexture("../../tmp/textures/Blatt.png", model)
+	mb.worldHeight = 1000
+	mb.worldWidth = 1000
+	InitScene(mb, model, false)
+}
 
-	for x := 0; x < 5000; x++ {
-		for z := 0; z < 5000; z++ {
+func InitScene(mb *GoCraftBehaviour, model *renderer.Model, debug bool) {
+	if debug {
+		go func() {
+			for x := 0; x < mb.worldHeight; x++ {
+				for z := 0; z < mb.worldWidth; z++ {
+					go spawnBlock(*model, x, z)
+				}
+			}
+		}()
+		return
+	}
+	for x := 0; x < mb.worldHeight; x++ {
+		for z := 0; z < mb.worldWidth; z++ {
 			spawnBlock(*model, x, z)
 		}
 	}
+
 }
 
 func spawnBlock(model renderer.Model, x, z int) {
 
 	renderer.AddModel(&model)
+	//modelChan <- &model
 
 	y := p.Noise2D(float64(x)*0.1, float64(z)*0.1) // Adjust the multiplier for resolution
 	// Get Perlin noise value

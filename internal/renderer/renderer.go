@@ -98,7 +98,6 @@ void main() {
     vec3 result = (ambient + diffuse) * light.intensity;
     FragColor = vec4(result, 1.0) * texColor;
 }
-
 ` + "\x00"
 
 type LightType int
@@ -213,6 +212,7 @@ func Render(camera Camera, deltaTime float64, light *Light) {
 	// Calculate frustum
 	frustum := camera.CalculateFrustum()
 	for _, model := range Models {
+		// Skip rendering if the model is outside the frustum
 		if !frustum.IntersectsSphere(model.BoundingSphereCenter, model.BoundingSphereRadius) {
 			continue // Skip rendering this model
 		}

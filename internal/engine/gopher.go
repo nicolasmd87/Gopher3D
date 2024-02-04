@@ -3,7 +3,6 @@ package engine
 import (
 	behaviour "Gopher3D/internal/Behaviour"
 	"Gopher3D/internal/renderer"
-	"fmt"
 	"log"
 	"runtime"
 	"time"
@@ -97,7 +96,7 @@ func (gopher *Gopher) Render(x, y int) {
 			renderer.AddModel(model)
 			renderer.SetTexture("../tmp/textures/2k_mars.jpg", model)
 		case modelBatch := <-gopher.ModelBatchChan:
-			fmt.Println("Received model batch", modelBatch)
+			AddModelBatch(modelBatch)
 			continue
 		case <-time.After(refreshRate):
 			continue
@@ -105,6 +104,7 @@ func (gopher *Gopher) Render(x, y int) {
 
 	}
 }
+
 func mouseCallback(w *glfw.Window, xpos, ypos float64) {
 	// Check if the window is focused and the right mouse button is pressed
 	if w.GetAttrib(glfw.Focused) == glfw.True && w.GetMouseButton(glfw.MouseButtonRight) == glfw.Press {
@@ -123,5 +123,14 @@ func mouseCallback(w *glfw.Window, xpos, ypos float64) {
 		camera.ProcessMouseMovement(float32(xoffset), float32(yoffset), true)
 	} else {
 		firstMouse = true
+	}
+}
+
+// TODO: Fix ?? Probably an issue with pointers
+func AddModelBatch(models []*renderer.Model) {
+	for _, model := range models {
+		if model != nil {
+			renderer.AddModel(model)
+		}
 	}
 }

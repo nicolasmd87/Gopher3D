@@ -21,6 +21,7 @@ type GoCraftBehaviour struct {
 	worldHeight     int
 	worldWidth      int
 	noiseDistortion float64
+	batchModels     bool
 }
 
 func NewGocraftBehaviour(engine *engine.Gopher) {
@@ -51,43 +52,50 @@ func (mb *GoCraftBehaviour) Update() {
 
 // May take a while to load, this is until we fix perfomance issues, this is a good benchmark in the meantime
 func createWorld(mb *GoCraftBehaviour) {
+	modelBatch = make([]*renderer.Model, mb.engine.Height*mb.engine.Width)
 	model, _ := loader.LoadObjectWithPath("../../tmp/examples/GoCraft/Cube.obj", true)
 	renderer.SetTexture("../../tmp/textures/Blatt.png", model)
 	// Tweaks this params for fun
-	mb.worldHeight = 1000
-	mb.worldWidth = 1000
+	// Warning: When batching is on we can spawn the scene before hand
+	// If the height and width are too big, it will take a while to load
+	mb.worldHeight = 500
+	mb.worldWidth = 500
 	mb.noiseDistortion = 10
-	InitScene(mb, model, false)
+	mb.batchModels = true
+	InitScene(mb, model)
 }
 
-func InitScene(mb *GoCraftBehaviour, model *renderer.Model, debug bool) {
-	if debug {
+func InitScene(mb *GoCraftBehaviour, model *renderer.Model) {
+	if mb.batchModels {
 		go func() {
+			var index int
 			for x := 0; x < mb.worldHeight; x++ {
 				for z := 0; z < mb.worldWidth; z++ {
-					go spawnBlock(mb, *model, x, z)
+					spawnBlock(mb, *model, x, z, index)
+					index++
 				}
 			}
+			mb.engine.ModelBatchChan <- modelBatch
 		}()
 		return
 	}
 	for x := 0; x < mb.worldHeight; x++ {
 		for z := 0; z < mb.worldWidth; z++ {
-			spawnBlock(mb, *model, x, z)
-			//modelBatch = append(modelBatch, model)
+			spawnBlock(mb, *model, x, z, 0)
 		}
 	}
 
 }
 
-func spawnBlock(mb *GoCraftBehaviour, model renderer.Model, x, z int) {
+func spawnBlock(mb *GoCraftBehaviour, model renderer.Model, x, z, index int) {
 	y := p.Noise2D(float64(x)*0.1, float64(z)*0.1)
 	y = scaleNoise(mb, y)
 	model.SetPosition(float32(x), float32(y), float32(z))
-
+	if mb.batchModels {
+		modelBatch[index] = &model
+		return
+	}
 	renderer.AddModel(&model)
-	//mb.engine.ModelChan <- &model
-
 }
 
 func scaleNoise(mb *GoCraftBehaviour, noiseVal float64) float64 {

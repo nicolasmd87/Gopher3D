@@ -16,10 +16,11 @@ var p = perlin.NewPerlin(2, 2, 3, rand.New(rand.NewSource(time.Now().UnixNano())
 var modelChan = make(chan *renderer.Model, 1000000)
 
 type GoCraftBehaviour struct {
-	engine      *engine.Gopher
-	name        string
-	worldHeight int
-	worldWidth  int
+	engine          *engine.Gopher
+	name            string
+	worldHeight     int
+	worldWidth      int
+	noiseDistortion float64
 }
 
 func NewGocraftBehaviour(engine *engine.Gopher) {
@@ -36,6 +37,7 @@ func main() {
 	// FULLSCREEN
 	engine.Width = 1980
 	engine.Height = 1080
+
 	// WINDOW POS IN X,Y AND MODEL
 	engine.Render(0, 0, modelChan)
 }
@@ -51,8 +53,10 @@ func (mb *GoCraftBehaviour) Update() {
 func createWorld(mb *GoCraftBehaviour) {
 	model, _ := loader.LoadObjectWithPath("../../tmp/examples/GoCraft/Cube.obj", true)
 	renderer.SetTexture("../../tmp/textures/Blatt.png", model)
-	mb.worldHeight = 1000
-	mb.worldWidth = 1000
+	// Tweaks this params for fun
+	mb.worldHeight = 100
+	mb.worldWidth = 100
+	mb.noiseDistortion = 10
 	InitScene(mb, model, false)
 }
 
@@ -61,7 +65,7 @@ func InitScene(mb *GoCraftBehaviour, model *renderer.Model, debug bool) {
 		go func() {
 			for x := 0; x < mb.worldHeight; x++ {
 				for z := 0; z < mb.worldWidth; z++ {
-					go spawnBlock(*model, x, z)
+					go spawnBlock(mb, *model, x, z)
 				}
 			}
 		}()
@@ -69,25 +73,25 @@ func InitScene(mb *GoCraftBehaviour, model *renderer.Model, debug bool) {
 	}
 	for x := 0; x < mb.worldHeight; x++ {
 		for z := 0; z < mb.worldWidth; z++ {
-			spawnBlock(*model, x, z)
+			spawnBlock(mb, *model, x, z)
 		}
 	}
 
 }
 
-func spawnBlock(model renderer.Model, x, z int) {
+func spawnBlock(mb *GoCraftBehaviour, model renderer.Model, x, z int) {
 
 	renderer.AddModel(&model)
 	//modelChan <- &model
 
 	y := p.Noise2D(float64(x)*0.1, float64(z)*0.1) // Adjust the multiplier for resolution
 	// Get Perlin noise value
-	y = scaleNoise(y) // Scale the noise value to your game's scale
+	y = scaleNoise(mb, y) // Scale the noise value to your game's scale
 	model.SetPosition(float32(x), float32(y), float32(z))
 }
 
-func scaleNoise(noiseVal float64) float64 {
+func scaleNoise(mb *GoCraftBehaviour, noiseVal float64) float64 {
 	// Scale and adjust the noise value to suit the height range of your terrain
 	// Example: scale between 0 and 10
-	return (noiseVal + 1) / 2 * 10
+	return (noiseVal / 2) * mb.noiseDistortion
 }

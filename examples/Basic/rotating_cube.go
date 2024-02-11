@@ -44,7 +44,7 @@ func (mb *GoCraftBehaviour) Update() {
 // May take a while to load, this is until we fix perfomance issues, this is a good benchmark in the meantime
 func createWorld(mb *GoCraftBehaviour) {
 	model, _ := loader.LoadObjectWithPath("../../tmp/examples/GoCraft/Blatt.obj")
-	renderer.SetTexture("../../tmp/textures/Blatt.png", model)
+	model.SetTexture("../../tmp/textures/Blatt.png")
 	mb.SceneModel = model
 	spawnBlock(mb.SceneModel, 0, 0)
 }

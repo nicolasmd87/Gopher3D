@@ -24,7 +24,7 @@ type Model struct {
 	Faces                []int32
 	TextureCoords        []float32
 	InterleavedData      []float32
-	TextureID            uint32
+	Material             *Material
 	VAO                  uint32 // Vertex Array Object
 	VBO                  uint32 // Vertex Buffer Object
 	EBO                  uint32 // Element Buffer Object
@@ -33,6 +33,14 @@ type Model struct {
 	BoundingSphereRadius float32
 	IsDirty              bool
 	IsBatched            bool
+}
+
+type Material struct {
+	Name          string
+	DiffuseColor  [3]float32
+	SpecularColor [3]float32
+	Shininess     float32
+	TextureID     uint32 // OpenGL texture ID
 }
 
 var (
@@ -45,6 +53,15 @@ var (
 	lightIntensityLoc int32
 	Debug             bool = false
 )
+
+// DefaultMaterial provides a basic material to fall back on
+var DefaultMaterial = &Material{
+	Name:          "default",
+	DiffuseColor:  [3]float32{1.0, 1.0, 1.0}, // White color
+	SpecularColor: [3]float32{1.0, 1.0, 1.0},
+	Shininess:     32.0,
+	TextureID:     0,
+}
 
 // =============================================================
 //
@@ -179,7 +196,8 @@ func AddModel(model *Model) {
 }
 
 func Render(camera Camera, deltaTime float64, light *Light) {
-	var currentTextureID uint32
+	var currentTextureID uint32 = ^uint32(0) // Initialize with an invalid value
+
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
 	if Debug {
@@ -234,9 +252,16 @@ func Render(camera Camera, deltaTime float64, light *Light) {
 			gl.UniformMatrix4fv(modelLoc, 1, false, &identityMatrix[0])
 		}
 
-		if model.TextureID != currentTextureID {
-			gl.BindTexture(gl.TEXTURE_2D, model.TextureID)
-			currentTextureID = model.TextureID
+		// Bind material's texture if available
+		if model.Material != nil && model.Material.TextureID != currentTextureID {
+			logger.Log.Info("Binding texture", zap.String("name", model.Material.Name))
+			gl.BindTexture(gl.TEXTURE_2D, model.Material.TextureID)
+			currentTextureID = model.Material.TextureID
+		} else if model.Material == nil {
+			// Fall back to default material's texture
+			loadDefaultTexture()
+			gl.BindTexture(gl.TEXTURE_2D, DefaultMaterial.TextureID)
+			currentTextureID = DefaultMaterial.TextureID
 		}
 
 		// Set the sampler to the first texture unit
@@ -382,10 +407,30 @@ func ApplyModelTransformation(vertex, position, scale mgl32.Vec3, rotation mgl32
 }
 
 func SetTexture(texturePath string, model *Model) {
-	textureID, _ := loadTexture(texturePath)
-	model.TextureID = textureID // Store the texture ID in the Model struct
-}
+	textureID, err := loadTexture(texturePath)
+	if err != nil {
+		logger.Log.Error("Failed to load texture", zap.String("path", texturePath), zap.Error(err))
+		return
+	}
 
+	if model.Material == nil {
+		model.Material = DefaultMaterial
+		return
+	}
+
+	model.Material.TextureID = textureID
+}
+func loadDefaultTexture() {
+	// Load a default texture
+	// TODO: Ember path to the default texture
+	textureID, err := loadTexture("../default.png")
+	if err != nil {
+		logger.Log.Error("Failed to load default texture", zap.Error(err))
+		return
+	}
+
+	DefaultMaterial.TextureID = textureID
+}
 func loadTexture(filePath string) (uint32, error) { // Consider specifying image format or handling different formats properly
 
 	imgFile, err := os.Open(filePath)

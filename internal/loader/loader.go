@@ -9,6 +9,7 @@ import (
 	_ "image/png"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -45,12 +46,17 @@ func LoadModel(filename string, recalculateNormals bool) (*renderer.Model, error
 		return nil, err
 	}
 	defer file.Close()
-
+	var modelMaterials map[string]*renderer.Material
+	var model *renderer.Model
 	var vertices []float32
 	var textureCoords []float32
 	var normals []float32
 	var faces []int32
-
+	var currentMaterialName string
+	// Initialize model with a default material to ensure it always has one
+	model = &renderer.Model{
+		Material: renderer.DefaultMaterial, // Assign the default material initially
+	}
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -87,6 +93,30 @@ func LoadModel(filename string, recalculateNormals bool) (*renderer.Model, error
 				return nil, err
 			}
 			faces = append(faces, face...)
+		// MATERIALS PLACEHOLDER
+		case "mtllib":
+			mtlPath := filepath.Join(filepath.Dir(filename), parts[1])
+			modelMaterials := LoadMaterials(mtlPath)
+			if err != nil {
+				logger.Log.Error("Error loading material library: ", zap.Error(err))
+				return nil, err
+			}
+
+			// TODO: SUPPORT MULTIPLE MATERIALS
+			for _, mat := range modelMaterials {
+				model.Material = mat
+				break // Just take the first material found
+			}
+		// TODO: For models with multiple parts, each possibly using a different material
+		case "usemtl":
+			if len(parts) >= 2 {
+				currentMaterialName = parts[1]
+				if material, ok := modelMaterials[currentMaterialName]; ok {
+					model.Material = material
+				} else {
+					logger.Log.Warn("Material not found", zap.String("Material:", currentMaterialName))
+				}
+			}
 		}
 	}
 
@@ -116,7 +146,7 @@ func LoadModel(filename string, recalculateNormals bool) (*renderer.Model, error
 		interleavedData = append(interleavedData, normals[i*3:i*3+3]...)
 	}
 
-	model := &renderer.Model{
+	model = &renderer.Model{
 		InterleavedData: interleavedData,
 		Vertices:        vertices,
 		Faces:           faces,
@@ -127,6 +157,95 @@ func LoadModel(filename string, recalculateNormals bool) (*renderer.Model, error
 	model.Scale = [3]float32{1, 1, 1}
 	model.CalculateBoundingSphere()
 	return model, nil
+}
+
+// LoadMaterials loads material properties from a .mtl file.
+func LoadMaterials(filename string) map[string]*renderer.Material {
+	if _, err := os.Stat(filename); os.IsNotExist(err) {
+		logger.Log.Error("Error opening material file: ", zap.Error(err))
+		return map[string]*renderer.Material{}
+	}
+
+	file, err := os.Open(filename)
+	if err != nil {
+		//return the default material
+		logger.Log.Error("Error opening material file: ", zap.Error(err))
+		return map[string]*renderer.Material{}
+	}
+	defer file.Close()
+	var currentMaterial *renderer.Material
+	materials := make(map[string]*renderer.Material)
+	scanner := bufio.NewScanner(file)
+	defer file.Close()
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		fields := strings.Fields(line)
+		if len(fields) == 0 {
+			continue
+		}
+
+		switch fields[0] {
+		case "newmtl":
+			if len(fields) < 2 {
+				logger.Log.Error("Malformed material line: ", zap.String("Line:", line))
+				continue
+			}
+			currentMaterial = &renderer.Material{Name: fields[1]}
+			materials[fields[1]] = currentMaterial
+		case "Kd": // Diffuse color
+			if len(fields) == 4 {
+				currentMaterial.DiffuseColor = parseColor(fields[1:])
+			}
+		case "Ks": // Specular color
+			if len(fields) == 4 {
+				currentMaterial.SpecularColor = parseColor(fields[1:])
+			}
+		case "Ns": // Shininess
+			if len(fields) == 2 {
+				currentMaterial.Shininess = parseFloat(fields[1])
+			}
+			/*
+				case "map_Kd": // Diffuse texture map
+					if len(fields) == 2 {
+						textureID := renderer.SetTexture(fields[1]) // TODO: Implement this in renderer
+						currentMaterial.TextureID = textureID
+					}
+				}
+			*/
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		// Handle error
+		panic(err)
+	}
+
+	return materials
+}
+
+// parseColor parses RGB color components from a list of strings to an array of float32.
+func parseColor(fields []string) [3]float32 {
+	var color [3]float32
+	for i, field := range fields {
+		if val, err := strconv.ParseFloat(field, 32); err == nil {
+			color[i] = float32(val)
+		} else {
+			logger.Log.Error("Error parsing color component: ", zap.Error(err))
+			color[i] = 0.0 // Defaulting to 0 in case of error
+		}
+	}
+	return color
+}
+
+// parseFloat parses a single string to a float32.
+func parseFloat(s string) float32 {
+	f, err := strconv.ParseFloat(s, 32)
+	if err != nil {
+		logger.Log.Error("Error parsing Shininess: ", zap.Error(err))
+		return 0
+	}
+	return float32(f)
 }
 
 func parseVertex(parts []string) ([]float32, error) {

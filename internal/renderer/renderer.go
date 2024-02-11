@@ -254,7 +254,6 @@ func Render(camera Camera, deltaTime float64, light *Light) {
 
 		// Bind material's texture if available
 		if model.Material != nil && model.Material.TextureID != currentTextureID {
-			logger.Log.Info("Binding texture", zap.String("name", model.Material.Name))
 			gl.BindTexture(gl.TEXTURE_2D, model.Material.TextureID)
 			currentTextureID = model.Material.TextureID
 		} else if model.Material == nil {
@@ -414,10 +413,10 @@ func SetTexture(texturePath string, model *Model) {
 	}
 
 	if model.Material == nil {
+		logger.Log.Info("Setting default material", zap.String("path", texturePath))
 		model.Material = DefaultMaterial
-		return
-	}
 
+	}
 	model.Material.TextureID = textureID
 }
 func loadDefaultTexture() {

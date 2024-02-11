@@ -1,6 +1,7 @@
 package loader
 
 import (
+	"Gopher3D/internal/logger"
 	"Gopher3D/internal/renderer"
 	"bufio"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/go-gl/mathgl/mgl32"
+	"go.uber.org/zap"
 )
 
 func LoadObjectWithPath(Path string, recalculateNormals bool) (*renderer.Model, error) {
@@ -29,7 +31,7 @@ func LoadObject() *renderer.Model {
 		if !file.IsDir() && strings.HasSuffix(file.Name(), ".obj") {
 			model, err := LoadModel("../obj/"+file.Name(), true)
 			if err != nil {
-				log.Fatalf("Could not load the obj file %s: %v", file.Name(), err)
+				logger.Log.Error("Could not load the obj file", zap.String("file:", file.Name()), zap.Error(err))
 			}
 			return model
 		}
@@ -60,28 +62,28 @@ func LoadModel(filename string, recalculateNormals bool) (*renderer.Model, error
 		case "v":
 			vertex, err := parseVertex(parts[1:])
 			if err != nil {
-				fmt.Println("Error parsing vertex: ", err)
+				logger.Log.Error("Error parsing vertex: ", zap.Error(err))
 				return nil, err
 			}
 			vertices = append(vertices, vertex...)
 		case "vn":
 			normal, err := parseVertex(parts[1:])
 			if err != nil {
-				fmt.Println("Error parsing normal: ", err)
+				logger.Log.Error("Error parsing normal: ", zap.Error(err))
 				return nil, err
 			}
 			normals = append(normals, normal...)
 		case "vt":
 			texCoord, err := parseTextureCoordinate(parts[1:])
 			if err != nil {
-				fmt.Println("Error parsing texture coordinate: ", err)
+				logger.Log.Error("Error parsing texture coordinate: ", zap.Error(err))
 				return nil, err
 			}
 			textureCoords = append(textureCoords, texCoord[0], texCoord[1])
 		case "f":
 			face, err := parseFace(parts[1:])
 			if err != nil {
-				fmt.Println("Error parsing face: ", err)
+				logger.Log.Error("Error parsing face: ", zap.Error(err))
 				return nil, err
 			}
 			faces = append(faces, face...)

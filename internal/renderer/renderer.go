@@ -65,7 +65,7 @@ var DefaultMaterial = &Material{
 	TextureID:     0,
 }
 
-//go:embed default.png
+//go:embed resources/default.png
 var defaultTextureFS embed.FS
 
 // =============================================================
@@ -429,7 +429,7 @@ func ApplyModelTransformation(vertex, position, scale mgl32.Vec3, rotation mgl32
 
 func SetDefaultTexture() {
 	// Read the embedded texture
-	textureBytes, err := defaultTextureFS.ReadFile("default.png")
+	textureBytes, err := defaultTextureFS.ReadFile("resources/default.png")
 	if err != nil {
 		logger.Log.Error("Failed to read embedded default texture", zap.Error(err))
 		return

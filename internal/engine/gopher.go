@@ -2,13 +2,14 @@ package engine
 
 import (
 	behaviour "Gopher3D/internal/Behaviour"
+	"Gopher3D/internal/logger"
 	"Gopher3D/internal/renderer"
-	"log"
 	"runtime"
 	"time"
 
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
+	"go.uber.org/zap"
 )
 
 var COLOR_ACTIVECAPTION int32 = 2
@@ -30,6 +31,8 @@ type Gopher struct {
 }
 
 func NewGopher() *Gopher {
+	logger.Init()
+	logger.Log.Info("Gopher3D initializing...")
 	return &Gopher{
 		Width:          1024,
 		Height:         768,
@@ -43,22 +46,22 @@ func (gopher *Gopher) Render(x, y int) {
 	runtime.LockOSThread()
 
 	if err := glfw.Init(); err != nil {
-		log.Fatalf("Could not initialize glfw: %v", err)
+		logger.Log.Error("Could not initialize glfw: %v", zap.Error(err))
 	}
 	defer glfw.Terminate()
 
 	// Set GLFW window hints here
 	glfw.WindowHint(glfw.Decorated, glfw.True)
 	glfw.WindowHint(glfw.Resizable, glfw.True)
-	window, err := glfw.CreateWindow(int(gopher.Width), int(gopher.Height), "Gopher 3D", nil, nil)
+	window, err := glfw.CreateWindow(int(gopher.Width), int(gopher.Height), "Gopher3D", nil, nil)
 
 	if err != nil {
-		log.Fatalf("Could not create glfw window: %v", err)
+		logger.Log.Error("Could not create glfw window: %v", zap.Error(err))
 	}
 	window.MakeContextCurrent()
 
 	if err := gl.Init(); err != nil {
-		log.Fatalf("Could not initialize OpenGL: %v", err)
+		logger.Log.Error("Could not initialize OpenGL: %v", zap.Error(err))
 	}
 
 	// Set GLFW window position here using the passed-in position
@@ -94,7 +97,7 @@ func (gopher *Gopher) Render(x, y int) {
 		select {
 		case model := <-gopher.ModelChan:
 			renderer.AddModel(model)
-			renderer.SetTexture("../tmp/textures/2k_mars.jpg", model)
+			renderer.SetTexture("../examples/tmp/textures/2k_mars.jpg", model)
 		case modelBatch := <-gopher.ModelBatchChan:
 			AddModelBatch(modelBatch)
 			continue

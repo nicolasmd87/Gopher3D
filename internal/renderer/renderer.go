@@ -1,6 +1,7 @@
 package renderer
 
 import (
+	"Gopher3D/internal/logger"
 	"fmt"
 	"image"
 	"image/draw"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/mathgl/mgl32"
+	"go.uber.org/zap"
 )
 
 type Model struct {
@@ -118,7 +120,7 @@ type Light struct {
 
 func Init(width, height int32) {
 	if err := gl.Init(); err != nil {
-		fmt.Println("OpenGL initialization failed:", err)
+		logger.Log.Error("OpenGL initialization failed", zap.Error(err))
 		return
 	}
 
@@ -214,7 +216,7 @@ func Render(camera Camera, deltaTime float64, light *Light) {
 	for _, model := range Models {
 		// Skip rendering if the model is outside the frustum
 		if !frustum.IntersectsSphere(model.BoundingSphereCenter, model.BoundingSphereRadius) {
-			continue // Skip rendering this model
+			continue
 		}
 
 		if !model.IsBatched {
@@ -283,7 +285,7 @@ func genShader(source string, shaderType uint32) uint32 {
 		log := strings.Repeat("\x00", int(logLength+1))
 		gl.GetShaderInfoLog(shader, logLength, nil, gl.Str(log))
 
-		fmt.Printf("Failed to compile %v shader: %v\n", shaderType, log)
+		logger.Log.Error("Failed to compile", zap.Uint32("shader type:", shaderType), zap.String("log", log))
 	}
 
 	return shader
@@ -304,7 +306,7 @@ func genShaderProgram(vertexShader, fragmentShader uint32) uint32 {
 		log := strings.Repeat("\x00", int(logLength+1))
 		gl.GetProgramInfoLog(program, logLength, nil, gl.Str(log))
 
-		fmt.Printf("Failed to link program: %v\n", log)
+		logger.Log.Error("Failed to link program", zap.String("log", log))
 	}
 	gl.DetachShader(program, vertexShader)
 	gl.DeleteShader(vertexShader)

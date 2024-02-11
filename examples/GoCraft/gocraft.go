@@ -53,9 +53,9 @@ func (mb *GoCraftBehaviour) Update() {
 // May take a while to load, this is until we fix perfomance issues, this is a good benchmark in the meantime
 func createWorld(mb *GoCraftBehaviour) {
 	modelBatch = make([]*renderer.Model, mb.engine.Height*mb.engine.Width)
-	model, _ := loader.LoadObjectWithPath("../../tmp/examples/GoCraft/Cube.obj", true)
-	renderer.SetTexture("../../tmp/textures/Blatt.png", model)
-	// Tweaks this params for fun
+	model, _ := loader.LoadObjectWithPath("../tmp/examples/GoCraft/Cube.obj", true)
+	renderer.SetTexture("../tmp/textures/Blatt.png", model)
+	// Tweak this params for fun
 	// Warning: When batching is on we can spawn the scene before hand
 	// If the height and width are too big, it will take a while to load
 	mb.worldHeight = 500

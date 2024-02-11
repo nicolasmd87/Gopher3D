@@ -1,0 +1,12 @@
+{
+    "level": "info",
+    "encoding": "json",
+    "outputPaths": ["stdout", "./logs/gopher3d.log"],
+    "errorOutputPaths": ["stderr"],
+    "encoderConfig": {
+      "messageKey": "message",
+      "levelKey": "level",
+      "levelEncoder": "lowercase"
+    }
+  }
+  

@@ -7,24 +7,24 @@ import (
 	"fmt"
 )
 
-type TestBehaviour struct {
+type MaterialsTestBehaviour struct {
 	engine *engine.Gopher
 	name   string
 }
 
-func NewTestBehaviour(engine *engine.Gopher) {
-	mb := &TestBehaviour{engine: engine, name: "Test"}
+func NewMaterialsTesBehaviour(engine *engine.Gopher) {
+	mb := &MaterialsTestBehaviour{engine: engine, name: "Materials Test"}
 	behaviour.GlobalBehaviourManager.Add(mb)
 }
 func main() {
 	engine := engine.NewGopher()
-	NewTestBehaviour(engine)
+	NewMaterialsTesBehaviour(engine)
 	engine.Render(768, 50)
 }
-func (mb *TestBehaviour) Start() {
+func (mb *MaterialsTestBehaviour) Start() {
 	fmt.Println("Behaviour started:", mb.name)
 }
 
-func (mb *TestBehaviour) Update() {
+func (mb *MaterialsTestBehaviour) Update() {
 	fmt.Println("Frame update for:", mb.name)
 }

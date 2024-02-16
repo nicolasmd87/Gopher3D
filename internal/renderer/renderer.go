@@ -216,11 +216,11 @@ func Render(camera Camera, deltaTime float64, light *Light) {
 	gl.UseProgram(shaderProgram)
 	gl.UniformMatrix4fv(viewProjLoc, 1, false, &viewProjection[0])
 
-	if light.Mode == "static" && !light.Calculated {
+	if light != nil && light.Mode == "static" && !light.Calculated {
 		// We only calculate it once to save performance
 		calculateLights(light)
 		light.Calculated = true
-	} else if !light.Calculated {
+	} else if light != nil && !light.Calculated {
 		calculateLights(light)
 	}
 

@@ -211,7 +211,7 @@ func LoadMaterials(filename string) map[string]*renderer.Material {
 						textureID := renderer.SetTexture(fields[1]) // TODO: Implement this in renderer
 						currentMaterial.TextureID = textureID
 					}
-				}
+
 			*/
 		}
 	}
@@ -300,13 +300,24 @@ func parseTextureCoordinate(parts []string) ([]float32, error) {
 }
 
 func RecalculateNormals(vertices []float32, faces []int32) []float32 {
+	if len(vertices) == 0 || len(faces) == 0 {
+		log.Println("Empty vertices or faces slice")
+		return nil // Return an empty slice or handle this case as appropriate
+	}
+
 	var normals = make([]float32, len(vertices))
 
 	// Calculate normals for each face
-	for i := 0; i < len(faces); i += 3 {
+	for i := 0; i+2 < len(faces); i += 3 {
 		idx0 := faces[i] * 3
 		idx1 := faces[i+1] * 3
 		idx2 := faces[i+2] * 3
+
+		// Ensure indices are within the bounds of the vertices array
+		if idx0+2 >= int32(len(vertices)) || idx1+2 >= int32(len(vertices)) || idx2+2 >= int32(len(vertices)) {
+			log.Printf("Index out of bounds: idx0=%d, idx1=%d, idx2=%d, len(vertices)=%d", idx0, idx1, idx2, len(vertices))
+			continue // Skip this iteration to avoid panic
+		}
 
 		v0 := mgl32.Vec3{vertices[idx0], vertices[idx0+1], vertices[idx0+2]}
 		v1 := mgl32.Vec3{vertices[idx1], vertices[idx1+1], vertices[idx1+2]}
@@ -316,18 +327,26 @@ func RecalculateNormals(vertices []float32, faces []int32) []float32 {
 		edge2 := v2.Sub(v0)
 		normal := edge1.Cross(edge2).Normalize()
 
-		// Add this normal to each vertex's normals and average them
+		// Safely add this normal to each vertex's normals
 		for j := 0; j < 3; j++ {
-			normals[idx0+int32(j)] += normal[j]
-			normals[idx1+int32(j)] += normal[j]
-			normals[idx2+int32(j)] += normal[j]
+			if idx0+int32(j) < int32(len(normals)) {
+				normals[idx0+int32(j)] += normal[j]
+			}
+			if idx1+int32(j) < int32(len(normals)) {
+				normals[idx1+int32(j)] += normal[j]
+			}
+			if idx2+int32(j) < int32(len(normals)) {
+				normals[idx2+int32(j)] += normal[j]
+			}
 		}
 	}
 
 	// Normalize the normals
 	for i := 0; i < len(normals); i += 3 {
-		normal := mgl32.Vec3{normals[i], normals[i+1], normals[i+2]}.Normalize()
-		normals[i], normals[i+1], normals[i+2] = normal[0], normal[1], normal[2]
+		if i+2 < len(normals) { // Ensure i+2 is within bounds
+			normal := mgl32.Vec3{normals[i], normals[i+1], normals[i+2]}.Normalize()
+			normals[i], normals[i+1], normals[i+2] = normal[0], normal[1], normal[2]
+		}
 	}
 
 	return normals

@@ -97,7 +97,7 @@ func (gopher *Gopher) Render(x, y int) {
 		select {
 		case model := <-gopher.ModelChan:
 			renderer.AddModel(model)
-			//renderer.SetTexture("../examples/tmp/textures/2k_mars.jpg", model)
+			//renderer.SetTexture("../examples/textures/2k_mars.jpg", model)
 		case modelBatch := <-gopher.ModelBatchChan:
 			AddModelBatch(modelBatch)
 			continue

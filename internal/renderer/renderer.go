@@ -405,7 +405,7 @@ func (m *Model) SetTexture(texturePath string) {
 	}
 
 	if m.Material == nil {
-		logger.Log.Info("Setting default material", zap.String("path", texturePath))
+		logger.Log.Info("Setting default material")
 		m.Material = DefaultMaterial
 
 	}
@@ -473,7 +473,7 @@ func createTextureFromImage(img image.Image) (uint32, error) {
 	return textureID, nil
 }
 
-func loadTexture(filePath string) (uint32, error) { // Consider specifying image format or handling different formats properly
+func loadTexture(filePath string) (uint32, error) { // TODO: Consider specifying image format or handling different formats properly
 
 	imgFile, err := os.Open(filePath)
 	if err != nil {

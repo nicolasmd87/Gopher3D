@@ -19,7 +19,7 @@ func NewTestBehaviour(engine *engine.Gopher) {
 func main() {
 	engine := engine.NewGopher()
 	NewTestBehaviour(engine)
-	engine.Render(768, 50, nil)
+	engine.Render(768, 50)
 }
 func (mb *TestBehaviour) Start() {
 	fmt.Println("Behaviour started:", mb.name)

@@ -2,6 +2,8 @@ package renderer
 
 import (
 	"Gopher3D/internal/logger"
+	"bytes"
+	"embed"
 	"fmt"
 	"image"
 	"image/draw"
@@ -24,7 +26,7 @@ type Model struct {
 	Faces                []int32
 	TextureCoords        []float32
 	InterleavedData      []float32
-	TextureID            uint32
+	Material             *Material
 	VAO                  uint32 // Vertex Array Object
 	VBO                  uint32 // Vertex Buffer Object
 	EBO                  uint32 // Element Buffer Object
@@ -33,6 +35,14 @@ type Model struct {
 	BoundingSphereRadius float32
 	IsDirty              bool
 	IsBatched            bool
+}
+
+type Material struct {
+	Name          string
+	DiffuseColor  [3]float32
+	SpecularColor [3]float32
+	Shininess     float32
+	TextureID     uint32 // OpenGL texture ID
 }
 
 var (
@@ -45,6 +55,18 @@ var (
 	lightIntensityLoc int32
 	Debug             bool = false
 )
+
+// DefaultMaterial provides a basic material to fall back on
+var DefaultMaterial = &Material{
+	Name:          "default",
+	DiffuseColor:  [3]float32{1.0, 1.0, 1.0}, // White color
+	SpecularColor: [3]float32{1.0, 1.0, 1.0},
+	Shininess:     32.0,
+	TextureID:     0,
+}
+
+//go:embed resources/default.png
+var defaultTextureFS embed.FS
 
 // =============================================================
 //
@@ -123,7 +145,7 @@ func Init(width, height int32) {
 		logger.Log.Error("OpenGL initialization failed", zap.Error(err))
 		return
 	}
-
+	SetDefaultTexture()
 	gl.Viewport(0, 0, width, height)
 	initOpenGL()
 }
@@ -179,7 +201,8 @@ func AddModel(model *Model) {
 }
 
 func Render(camera Camera, deltaTime float64, light *Light) {
-	var currentTextureID uint32
+	var currentTextureID uint32 = ^uint32(0) // Initialize with an invalid value
+
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
 	if Debug {
@@ -193,11 +216,11 @@ func Render(camera Camera, deltaTime float64, light *Light) {
 	gl.UseProgram(shaderProgram)
 	gl.UniformMatrix4fv(viewProjLoc, 1, false, &viewProjection[0])
 
-	if light.Mode == "static" && !light.Calculated {
+	if light != nil && light.Mode == "static" && !light.Calculated {
 		// We only calculate it once to save performance
 		calculateLights(light)
 		light.Calculated = true
-	} else if !light.Calculated {
+	} else if light != nil && !light.Calculated {
 		calculateLights(light)
 	}
 
@@ -234,9 +257,15 @@ func Render(camera Camera, deltaTime float64, light *Light) {
 			gl.UniformMatrix4fv(modelLoc, 1, false, &identityMatrix[0])
 		}
 
-		if model.TextureID != currentTextureID {
-			gl.BindTexture(gl.TEXTURE_2D, model.TextureID)
-			currentTextureID = model.TextureID
+		// Bind material's texture if available
+		if model.Material != nil && model.Material.TextureID != currentTextureID {
+			gl.BindTexture(gl.TEXTURE_2D, model.Material.TextureID)
+			currentTextureID = model.Material.TextureID
+		} else if model.Material == nil {
+			// Fall back to default material's texture
+
+			gl.BindTexture(gl.TEXTURE_2D, DefaultMaterial.TextureID)
+			currentTextureID = DefaultMaterial.TextureID
 		}
 
 		// Set the sampler to the first texture unit
@@ -322,6 +351,7 @@ func CreateLight() *Light {
 	}
 }
 
+// TODO: This could be moved to a separate model package with a model interface
 func (m *Model) RotateModel(angleX, angleY float32, angleZ float32) {
 	// Create quaternions for each axis
 	rotationX := mgl32.QuatRotate(mgl32.DegToRad(angleX), mgl32.Vec3{1, 0, 0})
@@ -367,6 +397,22 @@ func (m *Model) CalculateBoundingSphere() {
 	m.BoundingSphereRadius = float32(math.Sqrt(float64(maxDistanceSq)))
 }
 
+func (m *Model) SetTexture(texturePath string) {
+	textureID, err := loadTexture(texturePath)
+	if err != nil {
+		logger.Log.Error("Failed to load texture", zap.String("path", texturePath), zap.Error(err))
+		return
+	}
+
+	if m.Material == nil {
+		logger.Log.Info("Setting default material")
+		m.Material = DefaultMaterial
+
+	}
+	m.Material.TextureID = textureID
+}
+
+// Aux functions, maybe I need to move them to another package
 func ApplyModelTransformation(vertex, position, scale mgl32.Vec3, rotation mgl32.Quat) mgl32.Vec3 {
 	// Apply scaling
 	scaledVertex := mgl32.Vec3{vertex[0] * scale[0], vertex[1] * scale[1], vertex[2] * scale[2]}
@@ -381,12 +427,53 @@ func ApplyModelTransformation(vertex, position, scale mgl32.Vec3, rotation mgl32
 	return transformedVertex
 }
 
-func SetTexture(texturePath string, model *Model) {
-	textureID, _ := loadTexture(texturePath)
-	model.TextureID = textureID // Store the texture ID in the Model struct
+func SetDefaultTexture() {
+	// Read the embedded texture
+	textureBytes, err := defaultTextureFS.ReadFile("resources/default.png")
+	if err != nil {
+		logger.Log.Error("Failed to read embedded default texture", zap.Error(err))
+		return
+	}
+
+	// Create an image from the texture bytes
+	img, _, err := image.Decode(bytes.NewReader(textureBytes))
+	if err != nil {
+		logger.Log.Error("Failed to decode embedded default texture", zap.Error(err))
+		return
+	}
+
+	// Convert the image to a texture and set it as the default texture
+	textureID, err := createTextureFromImage(img) // Assumes this function exists
+	if err != nil {
+		logger.Log.Error("Failed to create texture from embedded default image", zap.Error(err))
+		return
+	}
+
+	DefaultMaterial.TextureID = textureID
+}
+func createTextureFromImage(img image.Image) (uint32, error) {
+	var textureID uint32
+	gl.GenTextures(1, &textureID)
+	gl.BindTexture(gl.TEXTURE_2D, textureID)
+
+	rgba, ok := img.(*image.RGBA)
+	if !ok {
+		// Convert to *image.RGBA if necessary
+		b := img.Bounds()
+		rgba = image.NewRGBA(image.Rect(0, 0, b.Dx(), b.Dy()))
+		draw.Draw(rgba, rgba.Bounds(), img, b.Min, draw.Src)
+	}
+
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(rgba.Rect.Size().X), int32(rgba.Rect.Size().Y), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(rgba.Pix))
+
+	// Set texture parameters
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+
+	return textureID, nil
 }
 
-func loadTexture(filePath string) (uint32, error) { // Consider specifying image format or handling different formats properly
+func loadTexture(filePath string) (uint32, error) { // TODO: Consider specifying image format or handling different formats properly
 
 	imgFile, err := os.Open(filePath)
 	if err != nil {

@@ -157,7 +157,7 @@ func main() {
 
 			filePath := reader.URI().Path()
 			// NEED TO SEND A MESSAGE LIKE THE MODEL! THIS WON'T WORK
-			renderer.SetTexture(filePath, renderer.Models[0])
+			renderer.Models[0].SetTexture(filePath)
 		}, window)
 
 		fd.SetFilter(storage.NewExtensionFileFilter([]string{".jpg", ".png"}))

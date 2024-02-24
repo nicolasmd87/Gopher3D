@@ -32,9 +32,7 @@ func main() {
 	engine := engine.NewGopher(engine.OPENGL)
 
 	NewGocraftBehaviour(engine)
-	engine.Light = renderer.CreateLight()
-	//Static light for some extra FPS
-	engine.Light.Type = renderer.STATIC_LIGHT
+
 	// FULLSCREEN
 	engine.Width = 1980
 	engine.Height = 1080
@@ -43,6 +41,10 @@ func main() {
 	engine.Render(0, 0)
 }
 func (mb *GoCraftBehaviour) Start() {
+	mb.engine.Light = renderer.CreateLight()
+	//Static light for some extra FPS
+	mb.engine.Light.Type = renderer.STATIC_LIGHT
+	//mb.engine.SetDebugMode(true)
 	createWorld(mb)
 }
 

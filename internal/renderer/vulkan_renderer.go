@@ -79,9 +79,7 @@ func (rend *VulkanRenderer) Init(width, height int32) {
 	// Create swap chain
 	//rend.swapChain = createSwapChain(rend.device, rend.surface, width, height)
 
-	// Setup remaining components like image views, render pass, graphics pipeline, etc.
-	// This is a simplified overview. Each of these steps involves detailed configuration
-	// and interaction with the Vulkan API.
+	// Setup remaining components like image views, render pass, graphics pipeline, etc.I.
 
 	logger.Log.Info("Vulkan Renderer initialized")
 }

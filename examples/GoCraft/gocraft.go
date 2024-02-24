@@ -62,6 +62,9 @@ func createWorld(mb *GoCraftBehaviour) {
 	mb.worldWidth = 500
 	mb.noiseDistortion = 10
 	mb.batchModels = true
+	// Camera frustum culling and face culling for some extra FPS
+	mb.engine.SetFrustumCulling(true)
+	mb.engine.SetFaceCulling(true)
 	InitScene(mb, model)
 }
 
@@ -95,7 +98,7 @@ func spawnBlock(mb *GoCraftBehaviour, model renderer.Model, x, z, index int) {
 		modelBatch[index] = &model
 		return
 	}
-	renderer.AddModel(&model)
+	mb.engine.AddModel(&model)
 }
 
 func scaleNoise(mb *GoCraftBehaviour, noiseVal float64) float64 {

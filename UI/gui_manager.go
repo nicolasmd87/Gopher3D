@@ -112,7 +112,7 @@ func createTree() *widget.Tree {
 func main() {
 	app := app.New()
 	window := app.NewWindow("Gopher 3D")
-	gopher := engine.NewGopher()
+	gopher := engine.NewGopher(engine.OPENGL)
 	gopher.Light = renderer.CreateLight()
 	gopher.Light.Type = renderer.DYNAMIC_LIGHT
 	window.Resize(fyne.NewSize(1024, 768))

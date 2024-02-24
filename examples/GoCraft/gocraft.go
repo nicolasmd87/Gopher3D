@@ -29,7 +29,7 @@ func NewGocraftBehaviour(engine *engine.Gopher) {
 	behaviour.GlobalBehaviourManager.Add(gocraftBehaviour)
 }
 func main() {
-	engine := engine.NewGopher()
+	engine := engine.NewGopher(engine.OPENGL)
 
 	NewGocraftBehaviour(engine)
 	engine.Light = renderer.CreateLight()

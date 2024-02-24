@@ -20,6 +20,14 @@ var firstMouse bool = true
 var camera renderer.Camera
 var refreshRate time.Duration = 1000 / 144 // 144 FPS
 
+// Enum for rendererAPIs Vulkan and OpenGL
+type rendAPI int
+
+const (
+	OPENGL rendAPI = iota
+	VULKAN
+)
+
 // TODO: Separate window into an abtact class with width and height as fields
 type Gopher struct {
 	Width          int32
@@ -31,10 +39,16 @@ type Gopher struct {
 	window         *glfw.Window
 }
 
-func NewGopher() *Gopher {
+func NewGopher(rendererAPI rendAPI) *Gopher {
 	logger.Init()
 	logger.Log.Info("Gopher3D initializing...")
-	rendAPI := &renderer.OpenGLRenderer{}
+	//Default renderer is OpenGL until we get Vulkan working
+	var rendAPI renderer.Render
+	if rendererAPI == OPENGL {
+		rendAPI = &renderer.OpenGLRenderer{}
+	} else {
+		rendAPI = &renderer.VulkanRenderer{}
+	}
 	return &Gopher{
 		//TODO: We need to be able to switch through renderers here. that's why we are building the interface
 		rendererAPI:    rendAPI,

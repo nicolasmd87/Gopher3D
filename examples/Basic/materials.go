@@ -20,8 +20,9 @@ func NewMaterialExampleBehaviour(engine *engine.Gopher) {
 	gocraftBehaviour := &GoCraftBehaviour{engine: engine, name: "GoCraft"}
 	behaviour.GlobalBehaviourManager.Add(gocraftBehaviour)
 }
+
 func main() {
-	engine := engine.NewGopher()
+	engine := engine.NewGopher(engine.OPENGL)
 	engine.Light = renderer.CreateLight()
 	NewMaterialExampleBehaviour(engine)
 	engine.Render(768, 50)

@@ -22,13 +22,13 @@ var refreshRate time.Duration = 1000 / 144 // 144 FPS
 
 // TODO: Separate window into an abtact class with width and height as fields
 type Gopher struct {
-	ModelChan      chan *renderer.Model
-	ModelBatchChan chan []*renderer.Model
-	rendererAPI    renderer.Render
-	window         *glfw.Window
-	Light          *renderer.Light
 	Width          int32
 	Height         int32
+	ModelChan      chan *renderer.Model
+	ModelBatchChan chan []*renderer.Model
+	Light          *renderer.Light
+	rendererAPI    renderer.Render
+	window         *glfw.Window
 }
 
 func NewGopher() *Gopher {
@@ -45,6 +45,7 @@ func NewGopher() *Gopher {
 	}
 }
 
+// Gopher API
 func (gopher *Gopher) Render(x, y int) {
 	lastX, lastY = float64(gopher.Width/2), float64(gopher.Width/2)
 	runtime.LockOSThread()
@@ -100,7 +101,7 @@ func (gopher *Gopher) Render(x, y int) {
 		case model := <-gopher.ModelChan:
 			gopher.rendererAPI.AddModel(model)
 		case modelBatch := <-gopher.ModelBatchChan:
-			AddModelBatch(gopher.rendererAPI, modelBatch)
+			gopher.AddModelBatch(modelBatch)
 			continue
 		case <-time.After(refreshRate):
 			continue
@@ -109,6 +110,46 @@ func (gopher *Gopher) Render(x, y int) {
 	}
 }
 
+func (gopher *Gopher) SetDebugMode(debug bool) {
+	switch renderer := gopher.rendererAPI.(type) {
+	case *renderer.OpenGLRenderer:
+		renderer.Debug = debug
+	default:
+		logger.Log.Error("Unknown renderer type")
+	}
+}
+
+func (gopher *Gopher) SetFrustumCulling(enabled bool) {
+	switch renderer := gopher.rendererAPI.(type) {
+	case *renderer.OpenGLRenderer:
+		renderer.FrustumCullingEnabled = enabled
+	default:
+		logger.Log.Error("Unknown renderer type")
+	}
+}
+func (gopher *Gopher) SetFaceCulling(enabled bool) {
+	switch renderer := gopher.rendererAPI.(type) {
+	case *renderer.OpenGLRenderer:
+		renderer.FaceCullingEnabled = enabled
+	default:
+		logger.Log.Error("Unknown renderer type")
+	}
+}
+
+func (gopher *Gopher) AddModel(model *renderer.Model) {
+	gopher.rendererAPI.AddModel(model)
+}
+
+// TODO: Fix ?? Probably an issue with pointers
+func (gopher *Gopher) AddModelBatch(models []*renderer.Model) {
+	for _, model := range models {
+		if model != nil {
+			gopher.rendererAPI.AddModel(model)
+		}
+	}
+}
+
+// Mouse callback function
 func mouseCallback(w *glfw.Window, xpos, ypos float64) {
 	// Check if the window is focused and the right mouse button is pressed
 	if w.GetAttrib(glfw.Focused) == glfw.True && w.GetMouseButton(glfw.MouseButtonRight) == glfw.Press {
@@ -127,27 +168,5 @@ func mouseCallback(w *glfw.Window, xpos, ypos float64) {
 		camera.ProcessMouseMovement(float32(xoffset), float32(yoffset), true)
 	} else {
 		firstMouse = true
-	}
-}
-
-func (gopher *Gopher) AddModel(model *renderer.Model) {
-	gopher.rendererAPI.AddModel(model)
-}
-
-// TODO: Fix ?? Probably an issue with pointers
-func AddModelBatch(rendererAPI renderer.Render, models []*renderer.Model) {
-	for _, model := range models {
-		if model != nil {
-			rendererAPI.AddModel(model)
-		}
-	}
-}
-
-func (gopher *Gopher) SetDebugMode(debug bool) {
-	switch renderer := gopher.rendererAPI.(type) {
-	case *renderer.OpenGLRenderer:
-		renderer.Debug = debug
-	default:
-		logger.Log.Error("Unknown renderer type")
 	}
 }

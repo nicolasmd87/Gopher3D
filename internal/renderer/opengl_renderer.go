@@ -52,6 +52,7 @@ func (rend *OpenGLRenderer) Init(width, height int32) {
 	rend.lightPosLoc = gl.GetUniformLocation(rend.shaderProgram, gl.Str("light.position\x00"))
 	rend.lightColorLoc = gl.GetUniformLocation(rend.shaderProgram, gl.Str("light.color\x00"))
 	rend.lightIntensityLoc = gl.GetUniformLocation(rend.shaderProgram, gl.Str("light.intensity\x00"))
+	logger.Log.Info("OpenGL render initialized")
 }
 
 func (rend *OpenGLRenderer) AddModel(model *Model) {

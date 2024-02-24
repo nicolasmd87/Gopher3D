@@ -1,12 +1,12 @@
 package renderer
 
 import (
-	"fmt"
+	"Gopher3D/internal/logger"
 	"image"
-	"log"
 
 	"github.com/go-gl/glfw/v3.3/glfw"
 	vk "github.com/vulkan-go/vulkan"
+	"go.uber.org/zap"
 )
 
 type VulkanRenderer struct {
@@ -31,7 +31,7 @@ func (rend *VulkanRenderer) Init(width, height int32) {
 	vk.SetGetInstanceProcAddr(glfw.GetVulkanGetInstanceProcAddress())
 	// Initialize the Vulkan library
 	if err := vk.Init(); err != nil {
-		log.Fatalf("Failed to initialize Vulkan: %v", err)
+		logger.Log.Error("Failed to initialize Vulkan: %v", zap.Error(err))
 	}
 
 	// Create Vulkan instance
@@ -49,7 +49,7 @@ func (rend *VulkanRenderer) Init(width, height int32) {
 
 	var instance vk.Instance
 	if vk.CreateInstance(instanceCreateInfo, nil, &instance) != vk.Success {
-		log.Fatalf("Failed to create instance")
+		logger.Log.Error("Failed to create instance")
 	}
 	rend.instance = instance
 
@@ -65,7 +65,7 @@ func (rend *VulkanRenderer) Init(width, height int32) {
 	var deviceCount uint32
 	vk.EnumeratePhysicalDevices(instance, &deviceCount, nil)
 	if deviceCount == 0 {
-		log.Fatalf("Failed to find GPUs with Vulkan support")
+		logger.Log.Error("Failed to find GPUs with Vulkan support")
 	}
 
 	var physicalDevices = make([]vk.PhysicalDevice, deviceCount)
@@ -83,7 +83,7 @@ func (rend *VulkanRenderer) Init(width, height int32) {
 	// This is a simplified overview. Each of these steps involves detailed configuration
 	// and interaction with the Vulkan API.
 
-	fmt.Println("Vulkan Renderer initialized")
+	logger.Log.Info("Vulkan Renderer initialized")
 }
 
 func (rend *VulkanRenderer) Render(camera Camera, deltaTime float64, light *Light) {

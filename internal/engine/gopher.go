@@ -24,6 +24,7 @@ var refreshRate time.Duration = 1000 / 144 // 144 FPS
 type Gopher struct {
 	ModelChan      chan *renderer.Model
 	ModelBatchChan chan []*renderer.Model
+	rendererAPI    renderer.Render
 	window         *glfw.Window
 	Light          *renderer.Light
 	Width          int32
@@ -33,7 +34,10 @@ type Gopher struct {
 func NewGopher() *Gopher {
 	logger.Init()
 	logger.Log.Info("Gopher3D initializing...")
+	rendAPI := &renderer.OpenGLRenderer{}
 	return &Gopher{
+		//TODO: We need to be able to switch through renderers here. that's why we are building the interface
+		rendererAPI:    rendAPI,
 		Width:          1024,
 		Height:         768,
 		ModelChan:      make(chan *renderer.Model, 1000000),
@@ -64,10 +68,9 @@ func (gopher *Gopher) Render(x, y int) {
 		logger.Log.Error("Could not initialize OpenGL: %v", zap.Error(err))
 	}
 
-	// Set GLFW window position here using the passed-in position
 	window.SetPos(x, y)
 
-	renderer.Init(gopher.Width, gopher.Height)
+	gopher.rendererAPI.Init(gopher.Width, gopher.Height)
 
 	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
 	camera = renderer.NewCamera(gopher.Width, gopher.Height) // Initialize the global camera variable
@@ -77,8 +80,7 @@ func (gopher *Gopher) Render(x, y int) {
 
 	window.SetCursorPosCallback(mouseCallback) // Set the callback function for mouse movement
 
-	// Debug mode
-	renderer.Debug = false
+	gopher.SetDebugMode(false)
 
 	var lastTime = glfw.GetTime()
 
@@ -89,17 +91,16 @@ func (gopher *Gopher) Render(x, y int) {
 		lastTime = currentTime
 		camera.ProcessKeyboard(window, float32(deltaTime))
 		behaviour.GlobalBehaviourManager.UpdateAll() // Update all behaviors
-		renderer.Render(camera, deltaTime, gopher.Light)
+		gopher.rendererAPI.Render(camera, deltaTime, gopher.Light)
 
 		window.SwapBuffers()
 		glfw.PollEvents()
 
 		select {
 		case model := <-gopher.ModelChan:
-			renderer.AddModel(model)
-			//renderer.SetTexture("../examples/textures/2k_mars.jpg", model)
+			gopher.rendererAPI.AddModel(model)
 		case modelBatch := <-gopher.ModelBatchChan:
-			AddModelBatch(modelBatch)
+			AddModelBatch(gopher.rendererAPI, modelBatch)
 			continue
 		case <-time.After(refreshRate):
 			continue
@@ -129,11 +130,24 @@ func mouseCallback(w *glfw.Window, xpos, ypos float64) {
 	}
 }
 
+func (gopher *Gopher) AddModel(model *renderer.Model) {
+	gopher.rendererAPI.AddModel(model)
+}
+
 // TODO: Fix ?? Probably an issue with pointers
-func AddModelBatch(models []*renderer.Model) {
+func AddModelBatch(rendererAPI renderer.Render, models []*renderer.Model) {
 	for _, model := range models {
 		if model != nil {
-			renderer.AddModel(model)
+			rendererAPI.AddModel(model)
 		}
+	}
+}
+
+func (gopher *Gopher) SetDebugMode(debug bool) {
+	switch renderer := gopher.rendererAPI.(type) {
+	case *renderer.OpenGLRenderer:
+		renderer.Debug = debug
+	default:
+		logger.Log.Error("Unknown renderer type")
 	}
 }

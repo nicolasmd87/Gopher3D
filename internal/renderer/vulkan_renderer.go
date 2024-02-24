@@ -1,6 +1,13 @@
 package renderer
 
-import "image"
+import (
+	"fmt"
+	"image"
+	"log"
+
+	"github.com/go-gl/glfw/v3.3/glfw"
+	vk "github.com/vulkan-go/vulkan"
+)
 
 type VulkanRenderer struct {
 	FrustumCullingEnabled bool
@@ -16,47 +23,67 @@ type VulkanRenderer struct {
 	shaderProgram         uint32
 	Shader                Shader
 	Models                []*Model
+	instance              vk.Instance
+	physicalDevice        vk.PhysicalDevice
 }
 
 func (rend *VulkanRenderer) Init(width, height int32) {
-	// Create an instance of Vulkan
-	//rend.instance = createVulkanInstance()
+	vk.SetGetInstanceProcAddr(glfw.GetVulkanGetInstanceProcAddress())
+	// Initialize the Vulkan library
+	if err := vk.Init(); err != nil {
+		log.Fatalf("Failed to initialize Vulkan: %v", err)
+	}
 
-	// Setup debug messenger for Vulkan
-	//rend.debugMessenger = setupDebugMessenger(rend.instance)
+	// Create Vulkan instance
+	instanceCreateInfo := &vk.InstanceCreateInfo{
+		SType: vk.StructureTypeInstanceCreateInfo,
+		PApplicationInfo: &vk.ApplicationInfo{
+			SType:              vk.StructureTypeApplicationInfo,
+			PApplicationName:   "Vulkan Application\x00",
+			ApplicationVersion: vk.MakeVersion(1, 0, 0),
+			PEngineName:        "No Engine\x00",
+			EngineVersion:      vk.MakeVersion(1, 0, 0),
+			ApiVersion:         vk.ApiVersion10,
+		},
+	}
 
-	// Create a surface for Vulkan
+	var instance vk.Instance
+	if vk.CreateInstance(instanceCreateInfo, nil, &instance) != vk.Success {
+		log.Fatalf("Failed to create instance")
+	}
+	rend.instance = instance
+
+	// Setup debug messenger (optional, for debug mode)
+	if rend.Debug {
+		//rend.debugMessenger = setupDebugMessenger(rend.instance)
+	}
+
+	// Create a surface (platform-specific, not covered here)
 	//rend.surface = createSurface(rend.instance, width, height)
 
-	// Pick a suitable physical device that supports Vulkan
-	//rend.physicalDevice = pickPhysicalDevice(rend.instance, rend.surface)
+	// Select a physical device
+	var deviceCount uint32
+	vk.EnumeratePhysicalDevices(instance, &deviceCount, nil)
+	if deviceCount == 0 {
+		log.Fatalf("Failed to find GPUs with Vulkan support")
+	}
 
-	// Create a logical device
+	var physicalDevices = make([]vk.PhysicalDevice, deviceCount)
+	vk.EnumeratePhysicalDevices(instance, &deviceCount, physicalDevices)
+	// Choose the first device for simplicity
+	rend.physicalDevice = physicalDevices[0]
+
+	// Create logical device and queues
 	//rend.device = createLogicalDevice(rend.physicalDevice, rend.surface)
 
-	// Create a swap chain
+	// Create swap chain
 	//rend.swapChain = createSwapChain(rend.device, rend.surface, width, height)
 
-	// Create image views
-	//rend.imageViews = createImageViews(rend.device, rend.swapChain)
+	// Setup remaining components like image views, render pass, graphics pipeline, etc.
+	// This is a simplified overview. Each of these steps involves detailed configuration
+	// and interaction with the Vulkan API.
 
-	// Create a render pass
-	//rend.renderPass = createRenderPass(rend.device, rend.swapChain)
-
-	// Create a graphics pipeline
-	//rend.pipeline = createGraphicsPipeline(rend.device, rend.swapChain, rend.renderPass)
-
-	// Create framebuffers
-	//rend.framebuffers = createFramebuffers(rend.device, rend.swapChain, rend.imageViews, rend.renderPass)
-
-	// Create command pool
-	//rend.commandPool = createCommandPool(rend.device, rend.swapChain)
-
-	// Create command buffers
-	//rend.commandBuffers = createCommandBuffers(rend.device, rend.commandPool, rend.framebuffers, rend.pipeline, rend.renderPass)
-
-	// Create semaphores and fences for synchronization
-	//rend.syncObjects = createSyncObjects(rend.device)
+	fmt.Println("Vulkan Renderer initialized")
 }
 
 func (rend *VulkanRenderer) Render(camera Camera, deltaTime float64, light *Light) {

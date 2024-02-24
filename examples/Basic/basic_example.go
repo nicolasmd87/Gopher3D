@@ -17,7 +17,7 @@ func NewTestBehaviour(engine *engine.Gopher) {
 	behaviour.GlobalBehaviourManager.Add(mb)
 }
 func main() {
-	engine := engine.NewGopher(engine.OPENGL)
+	engine := engine.NewGopher(engine.VULKAN)
 	NewTestBehaviour(engine)
 	engine.Render(768, 50)
 }

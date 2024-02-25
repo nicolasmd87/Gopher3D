@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/go-gl/gl/v4.1-core/gl"
+	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/go-gl/mathgl/mgl32"
 	"go.uber.org/zap"
 )
@@ -29,7 +30,7 @@ type OpenGLRenderer struct {
 	Models                []*Model
 }
 
-func (rend *OpenGLRenderer) Init(width, height int32) {
+func (rend *OpenGLRenderer) Init(width, height int32, _ *glfw.Window) {
 	if err := gl.Init(); err != nil {
 		logger.Log.Error("OpenGL initialization failed", zap.Error(err))
 		return
@@ -88,7 +89,7 @@ func (rend *OpenGLRenderer) AddModel(model *Model) {
 	rend.Models = append(rend.Models, model)
 }
 
-func (rend *OpenGLRenderer) Render(camera Camera, deltaTime float64, light *Light) {
+func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
 	var currentTextureID uint32 = ^uint32(0) // Initialize with an invalid value
 
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)

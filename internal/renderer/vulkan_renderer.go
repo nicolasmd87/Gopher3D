@@ -23,16 +23,21 @@ type VulkanRenderer struct {
 	shaderProgram         uint32
 	Shader                Shader
 	Models                []*Model
+	window                *glfw.Window
 	instance              vk.Instance
 	physicalDevice        vk.PhysicalDevice
+	surface               uintptr
 }
 
-func (rend *VulkanRenderer) Init(width, height int32) {
+func (rend *VulkanRenderer) Init(width, height int32, window *glfw.Window) {
 	vk.SetGetInstanceProcAddr(glfw.GetVulkanGetInstanceProcAddress())
+	rend.window = window
 	// Initialize the Vulkan library
 	if err := vk.Init(); err != nil {
 		logger.Log.Error("Failed to initialize Vulkan: %v", zap.Error(err))
 	}
+	// Query the required extensions for GLFW
+	glfwExtensions := window.GetRequiredInstanceExtensions()
 
 	// Create Vulkan instance
 	instanceCreateInfo := &vk.InstanceCreateInfo{
@@ -45,6 +50,8 @@ func (rend *VulkanRenderer) Init(width, height int32) {
 			EngineVersion:      vk.MakeVersion(1, 0, 0),
 			ApiVersion:         vk.ApiVersion10,
 		},
+		EnabledExtensionCount:   uint32(len(glfwExtensions)),
+		PpEnabledExtensionNames: glfwExtensions,
 	}
 
 	var instance vk.Instance
@@ -58,8 +65,15 @@ func (rend *VulkanRenderer) Init(width, height int32) {
 		//rend.debugMessenger = setupDebugMessenger(rend.instance)
 	}
 
-	// Create a surface (platform-specific, not covered here)
-	//rend.surface = createSurface(rend.instance, width, height)
+	if err := glfw.VulkanSupported(); !err {
+		logger.Log.Error("Vulkan not supported")
+	} else {
+		surface, err := window.CreateWindowSurface(instance, nil)
+		if err != nil {
+			logger.Log.Error("Failed to create window surface", zap.Error(err))
+		}
+		rend.surface = surface
+	}
 
 	// Select a physical device
 	var deviceCount uint32
@@ -84,7 +98,7 @@ func (rend *VulkanRenderer) Init(width, height int32) {
 	logger.Log.Info("Vulkan Renderer initialized")
 }
 
-func (rend *VulkanRenderer) Render(camera Camera, deltaTime float64, light *Light) {
+func (rend *VulkanRenderer) Render(camera Camera, light *Light) {
 	// Acquire an image from the swap chain
 	//rend.acquireNextImage()
 

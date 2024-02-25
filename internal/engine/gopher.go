@@ -72,22 +72,43 @@ func (gopher *Gopher) Render(x, y int) {
 	// Set GLFW window hints here
 	glfw.WindowHint(glfw.Decorated, glfw.True)
 	glfw.WindowHint(glfw.Resizable, glfw.True)
-	window, err := glfw.CreateWindow(int(gopher.Width), int(gopher.Height), "Gopher3D", nil, nil)
+
+	var window *glfw.Window
+	var err error
+
+	switch gopher.rendererAPI.(type) {
+	case *renderer.VulkanRenderer:
+		// Set GLFW to not create an OpenGL context
+		glfw.WindowHint(glfw.ClientAPI, glfw.NoAPI)
+	case *renderer.OpenGLRenderer:
+		glfw.WindowHint(glfw.ContextVersionMajor, 4)
+		glfw.WindowHint(glfw.ContextVersionMinor, 1)
+		glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
+		glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True)
+	default:
+		logger.Log.Error("Unknown renderer type", zap.String("fun", "Render"))
+		return
+	}
+
+	window, err = glfw.CreateWindow(int(gopher.Width), int(gopher.Height), "Gopher3D", nil, nil)
 
 	if err != nil {
 		logger.Log.Error("Could not create glfw window: %v", zap.Error(err))
 	}
-	window.MakeContextCurrent()
 
-	if err := gl.Init(); err != nil {
-		logger.Log.Error("Could not initialize OpenGL: %v", zap.Error(err))
+	if _, ok := gopher.rendererAPI.(*renderer.OpenGLRenderer); ok {
+		window.MakeContextCurrent()
+		if err := gl.Init(); err != nil {
+			logger.Log.Error("Could not initialize OpenGL: %v", zap.Error(err))
+			return
+		}
+		gl.ClearColor(0.0, 0.0, 0.0, 1.0)
 	}
 
 	window.SetPos(x, y)
 
-	gopher.rendererAPI.Init(gopher.Width, gopher.Height)
+	gopher.rendererAPI.Init(gopher.Width, gopher.Height, window)
 
-	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
 	camera = renderer.NewCamera(gopher.Width, gopher.Height) // Initialize the global camera variable
 
 	//window.SetInputMode(glfw.CursorMode, glfw.CursorDisabled) // Hide and capture the cursor
@@ -97,16 +118,29 @@ func (gopher *Gopher) Render(x, y int) {
 
 	gopher.SetDebugMode(false)
 
-	var lastTime = glfw.GetTime()
+	if _, ok := gopher.rendererAPI.(*renderer.OpenGLRenderer); ok {
+		gopher.openglRenderLoop(window)
+	}
+}
 
-	// TODO: Frame limiter - timer.sleep(remaining time to complete frame)
+// OpenGL-specific rendering loop
+func (gopher *Gopher) openglRenderLoop(window *glfw.Window) {
+	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
+	camera = renderer.NewCamera(gopher.Width, gopher.Height)
+
+	var lastTime = glfw.GetTime()
 	for !window.ShouldClose() {
 		currentTime := glfw.GetTime()
 		deltaTime := currentTime - lastTime
 		lastTime = currentTime
+
+		// OpenGL-specific rendering code
+		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT) // Example clear
+
+		// Update and render operations
 		camera.ProcessKeyboard(window, float32(deltaTime))
-		behaviour.GlobalBehaviourManager.UpdateAll() // Update all behaviors
-		gopher.rendererAPI.Render(camera, deltaTime, gopher.Light)
+		behaviour.GlobalBehaviourManager.UpdateAll()
+		gopher.rendererAPI.Render(camera, gopher.Light)
 
 		window.SwapBuffers()
 		glfw.PollEvents()
@@ -120,13 +154,14 @@ func (gopher *Gopher) Render(x, y int) {
 		case <-time.After(refreshRate):
 			continue
 		}
-
 	}
 }
 
 func (gopher *Gopher) SetDebugMode(debug bool) {
 	switch renderer := gopher.rendererAPI.(type) {
 	case *renderer.OpenGLRenderer:
+		renderer.Debug = debug
+	case *renderer.VulkanRenderer:
 		renderer.Debug = debug
 	default:
 		logger.Log.Error("Unknown renderer type")
@@ -137,6 +172,8 @@ func (gopher *Gopher) SetFrustumCulling(enabled bool) {
 	switch renderer := gopher.rendererAPI.(type) {
 	case *renderer.OpenGLRenderer:
 		renderer.FrustumCullingEnabled = enabled
+	case *renderer.VulkanRenderer:
+		renderer.FrustumCullingEnabled = enabled
 	default:
 		logger.Log.Error("Unknown renderer type")
 	}
@@ -144,6 +181,8 @@ func (gopher *Gopher) SetFrustumCulling(enabled bool) {
 func (gopher *Gopher) SetFaceCulling(enabled bool) {
 	switch renderer := gopher.rendererAPI.(type) {
 	case *renderer.OpenGLRenderer:
+		renderer.FaceCullingEnabled = enabled
+	case *renderer.VulkanRenderer:
 		renderer.FaceCullingEnabled = enabled
 	default:
 		logger.Log.Error("Unknown renderer type")

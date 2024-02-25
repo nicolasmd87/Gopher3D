@@ -3,6 +3,7 @@ package renderer
 import (
 	"image"
 
+	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/go-gl/mathgl/mgl32"
 )
 
@@ -23,8 +24,8 @@ type Light struct {
 }
 
 type Render interface {
-	Init(width, height int32)
-	Render(camera Camera, deltaTime float64, light *Light)
+	Init(width, height int32, window *glfw.Window)
+	Render(camera Camera, light *Light)
 	AddModel(model *Model)
 	LoadTexture(path string) (uint32, error)
 	CreateTextureFromImage(img image.Image) (uint32, error)

@@ -105,6 +105,5 @@ func spawnBlock(mb *GoCraftBehaviour, model renderer.Model, x, z, index int) {
 
 func scaleNoise(mb *GoCraftBehaviour, noiseVal float64) float64 {
 	// Scale and adjust the noise value to suit the height range of your terrain
-	// Example: scale between 0 and 10
 	return (noiseVal / 2) * mb.noiseDistortion
 }

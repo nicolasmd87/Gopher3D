@@ -47,7 +47,7 @@ func NewGopher(rendererAPI rendAPI) *Gopher {
 	if rendererAPI == OPENGL {
 		rendAPI = &renderer.OpenGLRenderer{}
 	} else {
-		rendAPI = &renderer.VulkanRenderer{}
+		rendAPI = &renderer.VulkanRendererAsche{}
 	}
 	return &Gopher{
 		//TODO: We need to be able to switch through renderers here. that's why we are building the interface
@@ -77,7 +77,7 @@ func (gopher *Gopher) Render(x, y int) {
 	var err error
 
 	switch gopher.rendererAPI.(type) {
-	case *renderer.VulkanRenderer:
+	case *renderer.VulkanRendererAsche:
 		// Set GLFW to not create an OpenGL context
 		glfw.WindowHint(glfw.ClientAPI, glfw.NoAPI)
 	case *renderer.OpenGLRenderer:
@@ -118,14 +118,10 @@ func (gopher *Gopher) Render(x, y int) {
 
 	gopher.SetDebugMode(false)
 
-	if _, ok := gopher.rendererAPI.(*renderer.OpenGLRenderer); ok {
-		gopher.openglRenderLoop(window)
-	}
+	gopher.RenderLoop(window)
 }
 
-// OpenGL-specific rendering loop
-func (gopher *Gopher) openglRenderLoop(window *glfw.Window) {
-	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
+func (gopher *Gopher) RenderLoop(window *glfw.Window) {
 	camera = renderer.NewCamera(gopher.Width, gopher.Height)
 
 	var lastTime = glfw.GetTime()
@@ -134,15 +130,15 @@ func (gopher *Gopher) openglRenderLoop(window *glfw.Window) {
 		deltaTime := currentTime - lastTime
 		lastTime = currentTime
 
-		// OpenGL-specific rendering code
-		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT) // Example clear
-
-		// Update and render operations
 		camera.ProcessKeyboard(window, float32(deltaTime))
 		behaviour.GlobalBehaviourManager.UpdateAll()
 		gopher.rendererAPI.Render(camera, gopher.Light)
 
-		window.SwapBuffers()
+		switch gopher.rendererAPI.(type) {
+		case *renderer.OpenGLRenderer:
+			window.SwapBuffers()
+		}
+
 		glfw.PollEvents()
 
 		select {
@@ -161,7 +157,7 @@ func (gopher *Gopher) SetDebugMode(debug bool) {
 	switch renderer := gopher.rendererAPI.(type) {
 	case *renderer.OpenGLRenderer:
 		renderer.Debug = debug
-	case *renderer.VulkanRenderer:
+	case *renderer.VulkanRendererAsche:
 		renderer.Debug = debug
 	default:
 		logger.Log.Error("Unknown renderer type")
@@ -172,7 +168,7 @@ func (gopher *Gopher) SetFrustumCulling(enabled bool) {
 	switch renderer := gopher.rendererAPI.(type) {
 	case *renderer.OpenGLRenderer:
 		renderer.FrustumCullingEnabled = enabled
-	case *renderer.VulkanRenderer:
+	case *renderer.VulkanRendererAsche:
 		renderer.FrustumCullingEnabled = enabled
 	default:
 		logger.Log.Error("Unknown renderer type")
@@ -182,7 +178,7 @@ func (gopher *Gopher) SetFaceCulling(enabled bool) {
 	switch renderer := gopher.rendererAPI.(type) {
 	case *renderer.OpenGLRenderer:
 		renderer.FaceCullingEnabled = enabled
-	case *renderer.VulkanRenderer:
+	case *renderer.VulkanRendererAsche:
 		renderer.FaceCullingEnabled = enabled
 	default:
 		logger.Log.Error("Unknown renderer type")

@@ -4,7 +4,6 @@ package main
 import (
 	behaviour "Gopher3D/internal/Behaviour"
 	"Gopher3D/internal/engine"
-	"fmt"
 )
 
 type TestBehaviour struct {
@@ -22,9 +21,7 @@ func main() {
 	engine.Render(768, 50)
 }
 func (mb *TestBehaviour) Start() {
-	fmt.Println("Behaviour started:", mb.name)
 }
 
 func (mb *TestBehaviour) Update() {
-	fmt.Println("Frame update for:", mb.name)
 }

@@ -12,28 +12,29 @@ import (
 )
 
 type VulkanRendererAsche struct {
-	VulkanApp             *VulkanApp
+	VulkanApp             *Application
 	FrustumCullingEnabled bool
 	FaceCullingEnabled    bool
 	Debug                 bool
 	Shader                Shader
 	Models                []*Model
 }
-type VulkanApp struct {
+type Application struct {
+	app      *as.BaseVulkanApp
 	ctx      as.Context
 	platform as.Platform
 	window   *glfw.Window
 }
 
-func NewVulkanApp(win *glfw.Window) *VulkanApp {
+func NewVulkanApp(win *glfw.Window) *Application {
 	if win == nil {
 		logger.Log.Error("NewVulkanApp: Window is nil")
 		return nil
 	}
-	return &VulkanApp{window: win}
+	return &Application{window: win}
 }
 
-func (app *VulkanApp) VulkanInit(newCtx asche.Context) error {
+func (app *Application) VulkanInit(newCtx asche.Context) error {
 	logger.Log.Info("Initializing Vulkan Context")
 	if newCtx == nil {
 		logger.Log.Error("VulkanInit: Context is nil")
@@ -44,7 +45,7 @@ func (app *VulkanApp) VulkanInit(newCtx asche.Context) error {
 	return nil
 }
 
-func (app *VulkanApp) VulkanSurface(instance vk.Instance) (surface vk.Surface) {
+func (app *Application) VulkanSurface(instance vk.Instance) (surface vk.Surface) {
 	logger.Log.Info("Creating Vulkan Surface")
 	surfUint64, err := app.window.CreateWindowSurface(instance, nil)
 	if err != nil {
@@ -59,7 +60,7 @@ func (app *VulkanApp) VulkanSurface(instance vk.Instance) (surface vk.Surface) {
 	return surface
 }
 
-func (a *VulkanApp) VulkanLayers() []string {
+func (a *Application) VulkanLayers() []string {
 	return []string{
 		//		"VK_LAYER_GOOGLE_threading",
 		// 		"VK_LAYER_LUNARG_parameter_validation",
@@ -71,37 +72,37 @@ func (a *VulkanApp) VulkanLayers() []string {
 	}
 }
 
-func (app *VulkanApp) VulkanDebug() bool {
+func (app *Application) VulkanDebug() bool {
 	return true
 }
 
-func (app *VulkanApp) VulkanAppName() string {
+func (app *Application) VulkanAppName() string {
 	return "Gopher3D"
 }
 
-func (app *VulkanApp) VulkanAppVersion() vk.Version {
+func (app *Application) VulkanAppVersion() vk.Version {
 	return vk.Version(vk.Version11)
 }
 
-func (app *VulkanApp) VulkanAPIVersion() vk.Version {
+func (app *Application) VulkanAPIVersion() vk.Version {
 	return vk.Version(vk.ApiVersion11)
 }
 
-func (app *VulkanApp) VulkanInstanceExtensions() []string {
+func (app *Application) VulkanInstanceExtensions() []string {
 	return app.window.GetRequiredInstanceExtensions()
 }
 
-func (app *VulkanApp) VulkanSwapchainDimensions() *as.SwapchainDimensions {
+func (app *Application) VulkanSwapchainDimensions() *as.SwapchainDimensions {
 	return &as.SwapchainDimensions{
 		Width: uint32(app.window.GetMonitor().GetVideoMode().Height), Height: uint32(app.window.GetMonitor().GetVideoMode().Width), Format: vk.FormatB8g8r8a8Unorm,
 	}
 }
 
-func (app *VulkanApp) VulkanMode() as.VulkanMode {
+func (app *Application) VulkanMode() as.VulkanMode {
 	return as.DefaultVulkanMode
 }
 
-func (app *VulkanApp) VulkanDeviceExtensions() []string {
+func (app *Application) VulkanDeviceExtensions() []string {
 	return []string{
 		"VK_KHR_swapchain",
 	}
@@ -123,7 +124,8 @@ func (rend *VulkanRendererAsche) Init(width, height int32, window *glfw.Window) 
 	logger.Log.Info("Vulkan APP", zap.Any("app", rend.VulkanApp))
 	logger.Log.Info("Vulkan APP window", zap.Any("win", rend.VulkanApp.window))
 
-	platform, err := as.NewPlatform(rend.VulkanApp)
+	platform, err := as.NewPlatform(rend.VulkanApp.app)
+
 	logger.Log.Info("Creating Asche platform")
 	if err != nil {
 		logger.Log.Error("Failed to create Asche platform", zap.Error(err))

@@ -93,7 +93,7 @@ func (app *Application) VulkanInstanceExtensions() []string {
 
 func (app *Application) VulkanSwapchainDimensions() *as.SwapchainDimensions {
 	return &as.SwapchainDimensions{
-		Width: uint32(app.window.GetMonitor().GetVideoMode().Height), Height: uint32(app.window.GetMonitor().GetVideoMode().Width), Format: vk.FormatB8g8r8a8Unorm,
+		Width: uint32(1024), Height: uint32(768), Format: vk.FormatB8g8r8a8Unorm,
 	}
 }
 
@@ -133,8 +133,8 @@ func (rend *VulkanRendererAsche) Init(width, height int32, window *glfw.Window) 
 		return
 	}
 
-	dim := rend.VulkanApp.Context().SwapchainDimensions()
-	logger.Log.Info("Initialized %s with %+v swapchain", zap.String("VulkanApp:", rend.VulkanApp.VulkanAppName()), zap.Any("Swapchain dimensions:", dim))
+	/*dim := rend.VulkanApp.Context().SwapchainDimensions()
+	logger.Log.Info("Initialized %s with %+v swapchain", zap.String("VulkanApp:", rend.VulkanApp.VulkanAppName()), zap.Any("Swapchain dimensions:", dim))*/
 
 	rend.platform = platform
 

@@ -3,9 +3,9 @@ package renderer
 import (
 	"Gopher3D/internal/logger"
 	"image"
+	"runtime"
 
 	"github.com/go-gl/glfw/v3.3/glfw"
-	"github.com/vulkan-go/asche"
 	as "github.com/vulkan-go/asche"
 	vk "github.com/vulkan-go/vulkan"
 	"go.uber.org/zap"
@@ -13,6 +13,7 @@ import (
 
 type VulkanRendererAsche struct {
 	VulkanApp             *Application
+	platform              as.Platform
 	FrustumCullingEnabled bool
 	FaceCullingEnabled    bool
 	Debug                 bool
@@ -20,28 +21,26 @@ type VulkanRendererAsche struct {
 	Models                []*Model
 }
 type Application struct {
-	app      *as.BaseVulkanApp
-	ctx      as.Context
-	platform as.Platform
-	window   *glfw.Window
+	*BaseAPP
+	debugEnabled bool
+	window       *glfw.Window
 }
 
-func NewVulkanApp(win *glfw.Window) *Application {
-	if win == nil {
-		logger.Log.Error("NewVulkanApp: Window is nil")
-		return nil
-	}
-	return &Application{window: win}
+type BaseAPP struct {
+	as.BaseVulkanApp
 }
 
-func (app *Application) VulkanInit(newCtx asche.Context) error {
+func NewVulkanApp() *Application {
+	return &Application{debugEnabled: true, BaseAPP: &BaseAPP{}}
+}
+
+func (app *Application) VulkanInit(newCtx as.Context) error {
 	logger.Log.Info("Initializing Vulkan Context")
 	if newCtx == nil {
 		logger.Log.Error("VulkanInit: Context is nil")
 		return vk.Error(vk.ErrorInitializationFailed)
 	}
 	logger.Log.Info("VulkanInit: Context initialized")
-	app.ctx = newCtx
 	return nil
 }
 
@@ -73,7 +72,7 @@ func (a *Application) VulkanLayers() []string {
 }
 
 func (app *Application) VulkanDebug() bool {
-	return true
+	return false
 }
 
 func (app *Application) VulkanAppName() string {
@@ -109,8 +108,10 @@ func (app *Application) VulkanDeviceExtensions() []string {
 }
 
 func (rend *VulkanRendererAsche) Init(width, height int32, window *glfw.Window) {
+	runtime.LockOSThread()
 	vk.SetGetInstanceProcAddr(glfw.GetVulkanGetInstanceProcAddress())
-	rend.VulkanApp = NewVulkanApp(window)
+	rend.VulkanApp = NewVulkanApp()
+	rend.VulkanApp.window = window
 
 	logger.Log.Info("Initializing Vulkan Renderer")
 
@@ -122,36 +123,39 @@ func (rend *VulkanRendererAsche) Init(width, height int32, window *glfw.Window) 
 
 	// Create a new Asche platform
 	logger.Log.Info("Vulkan APP", zap.Any("app", rend.VulkanApp))
-	logger.Log.Info("Vulkan APP window", zap.Any("win", rend.VulkanApp.window))
-
-	platform, err := as.NewPlatform(rend.VulkanApp.app)
 
 	logger.Log.Info("Creating Asche platform")
+
+	platform, err := as.NewPlatform(rend.VulkanApp)
+
 	if err != nil {
 		logger.Log.Error("Failed to create Asche platform", zap.Error(err))
 		return
 	}
 
-	rend.VulkanApp.platform = platform
+	dim := rend.VulkanApp.Context().SwapchainDimensions()
+	logger.Log.Info("Initialized %s with %+v swapchain", zap.String("VulkanApp:", rend.VulkanApp.VulkanAppName()), zap.Any("Swapchain dimensions:", dim))
+
+	rend.platform = platform
 
 	logger.Log.Info("Vulkan Renderer initialized successfully")
 }
 
 func (rend *VulkanRendererAsche) Render(camera Camera, light *Light) {
-	if rend.VulkanApp.ctx == nil {
-		return
-	}
-	imageIdx, outdated, err := rend.VulkanApp.ctx.AcquireNextImage()
-	if err != nil {
-		logger.Log.Error("Failed to acquire next image", zap.Error(err))
-		return
-	}
-	if outdated {
-		logger.Log.Info("Swapchain outdated")
-		return
-	}
-	logger.Log.Info("Rendering frame", zap.Int("Image index", imageIdx))
-	rend.VulkanApp.ctx.PresentImage(imageIdx)
+	/*	if rend.VulkanApp.ctx == nil {
+			return
+		}
+		imageIdx, outdated, err := rend.VulkanApp.ctx.AcquireNextImage()
+		if err != nil {
+			logger.Log.Error("Failed to acquire next image", zap.Error(err))
+			return
+		}
+		if outdated {
+			logger.Log.Info("Swapchain outdated")
+			return
+		}
+		logger.Log.Info("Rendering frame", zap.Int("Image index", imageIdx))
+		rend.VulkanApp.ctx.PresentImage(imageIdx)*/
 }
 
 func (rend *VulkanRendererAsche) AddModel(model *Model) {

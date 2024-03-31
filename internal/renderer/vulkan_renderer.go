@@ -138,6 +138,7 @@ func (rend *VulkanRenderer) Init(width, height int32, window *glfw.Window) {
 
 func (rend *VulkanRenderer) Render(camera Camera, light *Light) {
 	if rend.VulkanApp.Context() == nil {
+		logger.Log.Error("Vulkan context is nil")
 		return
 	}
 	imageIdx, outdated, err := rend.VulkanApp.Context().AcquireNextImage()
@@ -147,17 +148,14 @@ func (rend *VulkanRenderer) Render(camera Camera, light *Light) {
 	}
 	if outdated {
 		logger.Log.Info("Swapchain outdated")
-		return
-	}
-	if outdated {
-		imageIdx, _, err = rend.VulkanApp.Context().AcquireNextImage()
+		imageIdx, outdated, err = rend.VulkanApp.Context().AcquireNextImage()
 		if err != nil {
 			logger.Log.Error("Failed to acquire next image", zap.Error(err))
-			return
 		}
 	}
 	//logger.Log.Info("Rendering frame", zap.Int("Image index", imageIdx))
 	rend.VulkanApp.Context().PresentImage(imageIdx)
+	rend.VulkanApp.NextFrame()
 }
 
 func (rend *VulkanRenderer) AddModel(model *Model) {

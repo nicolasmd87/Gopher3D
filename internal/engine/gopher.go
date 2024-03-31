@@ -138,7 +138,6 @@ func (gopher *Gopher) RenderLoop(window *glfw.Window) {
 		case *renderer.OpenGLRenderer:
 			window.SwapBuffers()
 		}
-
 		glfw.PollEvents()
 
 		select {

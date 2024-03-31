@@ -29,12 +29,10 @@ func NewGocraftBehaviour(engine *engine.Gopher) {
 	behaviour.GlobalBehaviourManager.Add(gocraftBehaviour)
 }
 func main() {
-	engine := engine.NewGopher()
+	engine := engine.NewGopher(engine.OPENGL)
 
 	NewGocraftBehaviour(engine)
-	engine.Light = renderer.CreateLight()
-	//Static light for some extra FPS
-	engine.Light.Type = renderer.STATIC_LIGHT
+
 	// FULLSCREEN
 	engine.Width = 1980
 	engine.Height = 1080
@@ -43,6 +41,10 @@ func main() {
 	engine.Render(0, 0)
 }
 func (mb *GoCraftBehaviour) Start() {
+	mb.engine.Light = renderer.CreateLight()
+	//Static light for some extra FPS
+	mb.engine.Light.Type = renderer.STATIC_LIGHT
+	//mb.engine.SetDebugMode(true)
 	createWorld(mb)
 }
 
@@ -62,6 +64,9 @@ func createWorld(mb *GoCraftBehaviour) {
 	mb.worldWidth = 500
 	mb.noiseDistortion = 10
 	mb.batchModels = true
+	// Camera frustum culling and face culling for some extra FPS
+	mb.engine.SetFrustumCulling(true)
+	mb.engine.SetFaceCulling(true)
 	InitScene(mb, model)
 }
 
@@ -95,11 +100,10 @@ func spawnBlock(mb *GoCraftBehaviour, model renderer.Model, x, z, index int) {
 		modelBatch[index] = &model
 		return
 	}
-	renderer.AddModel(&model)
+	mb.engine.AddModel(&model)
 }
 
 func scaleNoise(mb *GoCraftBehaviour, noiseVal float64) float64 {
 	// Scale and adjust the noise value to suit the height range of your terrain
-	// Example: scale between 0 and 10
 	return (noiseVal / 2) * mb.noiseDistortion
 }

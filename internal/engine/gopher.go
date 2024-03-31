@@ -47,7 +47,7 @@ func NewGopher(rendererAPI rendAPI) *Gopher {
 	if rendererAPI == OPENGL {
 		rendAPI = &renderer.OpenGLRenderer{}
 	} else {
-		rendAPI = &renderer.VulkanRendererAsche{}
+		rendAPI = &renderer.VulkanRenderer{}
 	}
 	return &Gopher{
 		//TODO: We need to be able to switch through renderers here. that's why we are building the interface
@@ -77,7 +77,7 @@ func (gopher *Gopher) Render(x, y int) {
 	var err error
 
 	switch gopher.rendererAPI.(type) {
-	case *renderer.VulkanRendererAsche:
+	case *renderer.VulkanRenderer:
 		// Set GLFW to not create an OpenGL context
 		glfw.WindowHint(glfw.ClientAPI, glfw.NoAPI)
 	case *renderer.OpenGLRenderer:
@@ -157,7 +157,7 @@ func (gopher *Gopher) SetDebugMode(debug bool) {
 	switch renderer := gopher.rendererAPI.(type) {
 	case *renderer.OpenGLRenderer:
 		renderer.Debug = debug
-	case *renderer.VulkanRendererAsche:
+	case *renderer.VulkanRenderer:
 		renderer.Debug = debug
 	default:
 		logger.Log.Error("Unknown renderer type")
@@ -168,7 +168,7 @@ func (gopher *Gopher) SetFrustumCulling(enabled bool) {
 	switch renderer := gopher.rendererAPI.(type) {
 	case *renderer.OpenGLRenderer:
 		renderer.FrustumCullingEnabled = enabled
-	case *renderer.VulkanRendererAsche:
+	case *renderer.VulkanRenderer:
 		renderer.FrustumCullingEnabled = enabled
 	default:
 		logger.Log.Error("Unknown renderer type")
@@ -178,7 +178,7 @@ func (gopher *Gopher) SetFaceCulling(enabled bool) {
 	switch renderer := gopher.rendererAPI.(type) {
 	case *renderer.OpenGLRenderer:
 		renderer.FaceCullingEnabled = enabled
-	case *renderer.VulkanRendererAsche:
+	case *renderer.VulkanRenderer:
 		renderer.FaceCullingEnabled = enabled
 	default:
 		logger.Log.Error("Unknown renderer type")

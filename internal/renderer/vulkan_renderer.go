@@ -7,7 +7,6 @@ import (
 
 	"github.com/go-gl/glfw/v3.3/glfw"
 	as "github.com/vulkan-go/asche"
-	"github.com/vulkan-go/demos/vulkancube"
 	vk "github.com/vulkan-go/vulkan"
 	"go.uber.org/zap"
 )
@@ -22,20 +21,17 @@ type VulkanRenderer struct {
 	Models                []*Model
 }
 type Application struct {
-	//*BaseAPP
-	*vulkancube.SpinningCube
+	*Scene
 	debugEnabled bool
 	window       *glfw.Window
 }
 
-/*
 type BaseAPP struct {
 	as.BaseVulkanApp
 }
-*/
 
 func NewVulkanApp(window *glfw.Window) *Application {
-	return &Application{window: window, debugEnabled: false, SpinningCube: vulkancube.NewSpinningCube(1.0)}
+	return &Application{window: window, debugEnabled: false, Scene: NewScene(1.0)}
 }
 
 func (app *Application) VulkanSurface(instance vk.Instance) (surface vk.Surface) {

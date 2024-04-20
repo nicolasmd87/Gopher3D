@@ -50,8 +50,6 @@ type Scene struct {
 	renderPass     vk.RenderPass
 	pipeline       vk.Pipeline
 
-	frameIndex int
-
 	projectionMatrix lin.Mat4x4
 	viewMatrix       lin.Mat4x4
 	modelMatrix      lin.Mat4x4
@@ -84,6 +82,11 @@ func (s *Scene) prepareDepth() {
 		Tiling:      vk.ImageTilingOptimal,
 		Usage:       vk.ImageUsageFlags(vk.ImageUsageDepthStencilAttachmentBit),
 	}, nil, &s.depth.image)
+
+	if ret != vk.Success {
+		logger.Log.Error("Failed to create depth image")
+		return
+	}
 
 	logger.Log.Info("Creating depth image")
 
@@ -127,10 +130,12 @@ func (s *Scene) prepareDepth() {
 		ViewType: vk.ImageViewType2d,
 		Image:    s.depth.image,
 	}, nil, &view)
+
 	if ret != vk.Success {
 		logger.Log.Error("Failed to create image view")
 	}
 
+	logger.Log.Info("Creating image view")
 	s.depth.view = view
 }
 
@@ -552,6 +557,12 @@ func (s *Scene) prepareDescriptorLayout() {
 			}},
 	}, nil, &descLayout)
 
+	if ret != vk.Success {
+		logger.Log.Error("Failed to create descriptor set layout")
+		return
+	}
+	s.descLayout = descLayout
+
 	var pipelineLayout vk.PipelineLayout
 	ret = vk.CreatePipelineLayout(dev, &vk.PipelineLayoutCreateInfo{
 		SType:          vk.StructureTypePipelineLayoutCreateInfo,
@@ -765,7 +776,7 @@ func (s *Scene) prepareDescriptorPool() {
 		logger.Log.Error("Failed to create descriptor pool")
 		return
 	}
-	logger.Log.Info("Creating descriptor pool")
+	logger.Log.Info("Creating descriptor pool", zap.Any("descPool", descPool))
 	s.descPool = descPool
 }
 
@@ -892,6 +903,7 @@ func (s *Scene) NextFrame() {
 	s.modelMatrix.Rotate(&Model, 0.0, 1.0, 0.0, lin.DegreesToRadians(s.spinAngle))
 }
 
+// Called on every frame???
 func (s *Scene) VulkanContextInvalidate(imageIdx int) error {
 	dev := s.Context().Device()
 	res := s.Context().SwapchainImageResources()[imageIdx]
@@ -907,7 +919,6 @@ func (s *Scene) VulkanContextInvalidate(imageIdx int) error {
 		logger.Log.Error("Failed to map memory")
 		return nil
 	}
-	logger.Log.Info("Mapping memory")
 	n := vk.Memcopy(pData, data)
 	if n != len(data) {
 		logger.Log.Error("Failed to copy memory")

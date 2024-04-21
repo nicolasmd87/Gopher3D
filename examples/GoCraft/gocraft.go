@@ -67,6 +67,10 @@ func createWorld(mb *GoCraftBehaviour) {
 	// Camera frustum culling and face culling for some extra FPS
 	mb.engine.SetFrustumCulling(true)
 	mb.engine.SetFaceCulling(true)
+
+	// OpenGL and Vulkan use different coordinate systems
+	mb.engine.Camera.InvertMouse = false
+
 	InitScene(mb, model)
 }
 

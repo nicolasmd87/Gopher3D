@@ -109,8 +109,8 @@ func (gopher *Gopher) Render(x, y int) {
 
 	gopher.rendererAPI.Init(gopher.Width, gopher.Height, gopher.window)
 
-	// TODO: We should be able to create a camera with custom parameters through our API, fixed for now
-	gopher.Camera = renderer.NewCamera(gopher.Width, gopher.Height)
+	// Fixed camera in each scene for now
+	gopher.Camera = renderer.NewDefaultCamera(gopher.Width, gopher.Height)
 
 	//window.SetInputMode(glfw.CursorMode, glfw.CursorDisabled) // Hide and capture the cursor
 	gopher.window.SetInputMode(glfw.CursorMode, glfw.CursorNormal) // Set cursor to normal mode initially

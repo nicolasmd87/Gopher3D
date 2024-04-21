@@ -415,7 +415,9 @@ func (s *Scene) drawBuildCommandBuffer(res *as.SwapchainImageResources, cmd vk.C
 		SType: vk.StructureTypeCommandBufferBeginInfo,
 		Flags: vk.CommandBufferUsageFlags(vk.CommandBufferUsageSimultaneousUseBit),
 	})
-	logger.Log.Info("Begin command buffer")
+	if ret != vk.Success {
+		logger.Log.Error("Failed to begin command buffer")
+	}
 	clearValues := make([]vk.ClearValue, 2)
 	clearValues[1].SetDepthStencil(1, 0)
 	clearValues[0].SetColor([]float32{
@@ -804,7 +806,6 @@ func (s *Scene) prepareDescriptorSet() {
 			logger.Log.Error("Failed to allocate descriptor set")
 			return
 		}
-		logger.Log.Info("Allocating descriptor set")
 		res.SetDescriptorSet(set)
 
 		vk.UpdateDescriptorSets(dev, 2, []vk.WriteDescriptorSet{{
@@ -851,7 +852,6 @@ func (s *Scene) prepareFramebuffers() {
 			logger.Log.Error("Failed to create framebuffer")
 			return
 		}
-		logger.Log.Info("Creating framebuffer")
 		res.SetFramebuffer(fb)
 	}
 }

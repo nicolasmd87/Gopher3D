@@ -186,7 +186,7 @@ func (rend *VulkanRenderer) SetFaceCulling(enabled bool) {
 // TODO: Mouse movement is not working for some reason, check vectors up, down , etc
 func updateCamera(rend *VulkanRenderer, camera Camera) {
 	rend.VulkanApp.projectionMatrix = camera.GetViewProjectionVulkan()
-	rend.VulkanApp.viewMatrix = camera.GetViewMatrixVulkan()
-	// TODO: ENABLE AND DISABLE TO SEE SOME MORPHING
 	rend.VulkanApp.projectionMatrix[1][1] *= -1
+	rend.VulkanApp.viewMatrix = camera.GetViewMatrixVulkan()
+
 }

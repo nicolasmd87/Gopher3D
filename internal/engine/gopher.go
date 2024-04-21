@@ -116,14 +116,10 @@ func (gopher *Gopher) Render(x, y int) {
 
 	window.SetCursorPosCallback(mouseCallback) // Set the callback function for mouse movement
 
-	gopher.SetDebugMode(false)
-
-	gopher.RenderLoop(window)
+	gopher.RenderLoop(window, camera)
 }
 
-func (gopher *Gopher) RenderLoop(window *glfw.Window) {
-	camera = renderer.NewCamera(gopher.Width, gopher.Height)
-
+func (gopher *Gopher) RenderLoop(window *glfw.Window, camera renderer.Camera) {
 	var lastTime = glfw.GetTime()
 	for !window.ShouldClose() {
 		currentTime := glfw.GetTime()

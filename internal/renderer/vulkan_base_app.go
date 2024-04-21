@@ -16,22 +16,16 @@ import (
 )
 
 func NewScene(spinAngle float32) *Scene {
-	a := &Scene{
+	scene := &Scene{
 		spinAngle: spinAngle,
-		eyeVec:    &lin.Vec3{0.0, 3.0, 5.0},
-		originVec: &lin.Vec3{0.0, 0.0, 0.0},
-		upVec:     &lin.Vec3{0.0, 1.0, 0.0},
 	}
-
-	a.projectionMatrix.Perspective(lin.DegreesToRadians(45.0), 1.0, 0.1, 100.0)
-	a.viewMatrix.LookAt(a.eyeVec, a.originVec, a.upVec)
-	a.modelMatrix.Identity()
-	a.projectionMatrix[1][1] *= -1 // Flip projection matrix from GL to Vulkan orientation.
-	return a
+	scene.modelMatrix.Identity()
+	return scene
 }
 
 type Scene struct {
 	as.BaseVulkanApp
+	Debug bool
 
 	width      uint32
 	height     uint32
@@ -53,10 +47,6 @@ type Scene struct {
 	projectionMatrix lin.Mat4x4
 	viewMatrix       lin.Mat4x4
 	modelMatrix      lin.Mat4x4
-
-	eyeVec    *lin.Vec3
-	originVec *lin.Vec3
-	upVec     *lin.Vec3
 
 	spinAngle float32
 }
@@ -175,6 +165,10 @@ func (s *Scene) prepareTextureImage(path string, tiling vk.ImageTiling,
 		Usage:         vk.ImageUsageFlags(usage),
 		InitialLayout: vk.ImageLayoutPreinitialized,
 	}, nil, &image)
+
+	if ret != vk.Success {
+		logger.Log.Error("Failed to create image")
+	}
 
 	tex.image = image
 
@@ -661,7 +655,11 @@ func (s *Scene) preparePipeline() {
 	logger.Log.Info("Creating pipeline cache")
 
 	s.pipelineCache = pipelineCache
-
+	fillMode := vk.PolygonModeFill
+	logger.Log.Info("PolygonMode", zap.Any("Debug:", s.Debug))
+	if s.Debug {
+		fillMode = vk.PolygonModeLine
+	}
 	pipelineCreateInfos := []vk.GraphicsPipelineCreateInfo{{
 		SType:      vk.StructureTypeGraphicsPipelineCreateInfo,
 		Layout:     s.pipelineLayout,
@@ -682,9 +680,10 @@ func (s *Scene) preparePipeline() {
 			SType:    vk.StructureTypePipelineInputAssemblyStateCreateInfo,
 			Topology: vk.PrimitiveTopologyTriangleList,
 		},
+
 		PRasterizationState: &vk.PipelineRasterizationStateCreateInfo{
 			SType:       vk.StructureTypePipelineRasterizationStateCreateInfo,
-			PolygonMode: vk.PolygonModeFill,
+			PolygonMode: fillMode,
 			CullMode:    vk.CullModeFlags(vk.CullModeBackBit),
 			FrontFace:   vk.FrontFaceCounterClockwise,
 			LineWidth:   1.0,
@@ -795,7 +794,6 @@ func (s *Scene) prepareDescriptorSet() {
 
 	for _, res := range swapchainImageResources {
 		var set vk.DescriptorSet
-		logger.Log.Info("res", zap.Any("res", res), zap.Any("descPool", s.descPool), zap.Any("descLayout", s.descLayout), zap.Any("uniformBuffer", res.UniformBuffer()), zap.Any("texInfos", texInfos), zap.Any("texEnabled", texEnabled), zap.Any("tex", s.textures))
 		ret := vk.AllocateDescriptorSets(dev, &vk.DescriptorSetAllocateInfo{
 			SType:              vk.StructureTypeDescriptorSetAllocateInfo,
 			DescriptorPool:     s.descPool,

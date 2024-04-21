@@ -128,7 +128,7 @@ func (rend *VulkanRenderer) Init(width, height int32, window *glfw.Window) {
 	logger.Log.Info("Swapchain Initialized", zap.Any("Swapchain dimensions:", dim))
 
 	rend.platform = platform
-
+	rend.VulkanApp.Scene.Debug = rend.Debug
 	logger.Log.Info("Vulkan framework initialized.")
 }
 
@@ -137,6 +137,7 @@ func (rend *VulkanRenderer) Render(camera Camera, light *Light) {
 		logger.Log.Error("Vulkan context is nil")
 		return
 	}
+	updateCamera(rend, camera)
 	imageIdx, outdated, err := rend.VulkanApp.Context().AcquireNextImage()
 	if err != nil {
 		logger.Log.Error("Failed to acquire next image", zap.Error(err))
@@ -180,4 +181,12 @@ func (rend *VulkanRenderer) SetFrustumCulling(enabled bool) {
 
 func (rend *VulkanRenderer) SetFaceCulling(enabled bool) {
 	rend.FaceCullingEnabled = enabled
+}
+
+// TODO: Mouse movement is not working for some reason, check vectors up, down , etc
+func updateCamera(rend *VulkanRenderer, camera Camera) {
+	rend.VulkanApp.projectionMatrix = camera.GetViewProjectionVulkan()
+	rend.VulkanApp.viewMatrix = camera.GetViewMatrixVulkan()
+	// TODO: ENABLE AND DISABLE TO SEE SOME MORPHING
+	rend.VulkanApp.projectionMatrix[1][1] *= -1
 }

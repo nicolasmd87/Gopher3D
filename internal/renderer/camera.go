@@ -4,6 +4,8 @@ package renderer
 import (
 	"math"
 
+	"github.com/xlab/linmath"
+
 	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/go-gl/mathgl/mgl32"
 )
@@ -62,6 +64,30 @@ func (c *Camera) UpdateProjection(fov, aspectRatio, near, far float32) {
 func (c *Camera) GetViewProjection() mgl32.Mat4 {
 	view := mgl32.LookAtV(c.position, c.position.Add(c.front), c.up)
 	return c.projection.Mul4(view)
+}
+
+// TODO: THIS IS JUST WHILE I TEST VULKAN INTEGRATION, WE SHOULD NOT BE CONVERTING ANYTHING
+//
+//	WE NEED TO WORK ON A LINMATH CAMERA IMPLEMENTATION FOR VULKAN
+//
+// Assume linmath.Mat4x4 is a struct with a flat array of 16 float32s
+func convertMGL32Mat4ToLinMathMat4x4(m mgl32.Mat4) linmath.Mat4x4 {
+	var l linmath.Mat4x4
+	for i := 0; i < 4; i++ {
+		for j := 0; j < 4; j++ {
+			l[i][j] = m[i*4+j]
+		}
+	}
+	return l
+}
+
+func (c *Camera) GetViewProjectionVulkan() linmath.Mat4x4 {
+	return convertMGL32Mat4ToLinMathMat4x4(c.GetViewProjection())
+}
+
+func (c *Camera) GetViewMatrixVulkan() linmath.Mat4x4 {
+	view := mgl32.LookAtV(c.position, c.position.Add(c.front), c.up)
+	return convertMGL32Mat4ToLinMathMat4x4(view)
 }
 
 func (c *Camera) ProcessKeyboard(window *glfw.Window, deltaTime float32) {

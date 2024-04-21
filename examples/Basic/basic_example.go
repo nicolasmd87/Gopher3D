@@ -18,9 +18,13 @@ func NewTestBehaviour(engine *engine.Gopher) {
 func main() {
 	engine := engine.NewGopher(engine.VULKAN)
 	NewTestBehaviour(engine)
+	engine.SetDebugMode(true)
 	engine.Render(768, 50)
 }
 func (mb *TestBehaviour) Start() {
+	mb.engine.SetFrustumCulling(false)
+	mb.engine.SetFaceCulling(false)
+
 }
 
 func (mb *TestBehaviour) Update() {

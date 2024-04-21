@@ -35,7 +35,7 @@ type Frustum struct {
 	Planes [6]Plane
 }
 
-func NewCamera(height int32, width int32) Camera {
+func NewCamera(height int32, width int32) *Camera {
 	camera := Camera{
 		position:    mgl32.Vec3{1, 0, 200},
 		front:       mgl32.Vec3{0, 0, -1},
@@ -51,10 +51,10 @@ func NewCamera(height int32, width int32) Camera {
 		firstMouse:  true,
 	}
 	camera.updateCameraVectors()
-	// Ideally, the aspect ratio should be calculated dynamically based on the window dimensions
+	// TODO: Ideally, the aspect ratio should be calculated dynamically based on the window dimensions
 	projection := mgl32.Perspective(mgl32.DegToRad(camera.fov), float32(height)/float32(width), 0.1, 1000.0)
 	camera.projection = projection
-	return camera
+	return &camera
 }
 
 func (c *Camera) UpdateProjection(fov, aspectRatio, near, far float32) {

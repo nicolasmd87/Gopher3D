@@ -894,6 +894,7 @@ func (s *Scene) VulkanContextCleanup() error {
 	return nil
 }
 
+// Next Frame is called on every frame
 func (s *Scene) NextFrame() {
 	var Model lin.Mat4x4
 	Model.Dup(&s.modelMatrix)

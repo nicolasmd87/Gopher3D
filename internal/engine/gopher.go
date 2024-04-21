@@ -28,7 +28,7 @@ const (
 	VULKAN
 )
 
-// TODO: Separate window into an abtact class with width and height as fields
+// TODO: Separate window into an abstract class with width and height as fields
 type Gopher struct {
 	Width          int32
 	Height         int32
@@ -37,6 +37,7 @@ type Gopher struct {
 	Light          *renderer.Light
 	rendererAPI    renderer.Render
 	window         *glfw.Window
+	Camera         *renderer.Camera
 }
 
 func NewGopher(rendererAPI rendAPI) *Gopher {
@@ -50,7 +51,7 @@ func NewGopher(rendererAPI rendAPI) *Gopher {
 		rendAPI = &renderer.VulkanRenderer{}
 	}
 	return &Gopher{
-		//TODO: We need to be able to switch through renderers here. that's why we are building the interface
+		//TODO: We need to be able to set width and height of the window
 		rendererAPI:    rendAPI,
 		Width:          1024,
 		Height:         768,
@@ -73,7 +74,6 @@ func (gopher *Gopher) Render(x, y int) {
 	glfw.WindowHint(glfw.Decorated, glfw.True)
 	glfw.WindowHint(glfw.Resizable, glfw.True)
 
-	var window *glfw.Window
 	var err error
 
 	switch gopher.rendererAPI.(type) {
@@ -90,14 +90,14 @@ func (gopher *Gopher) Render(x, y int) {
 		return
 	}
 
-	window, err = glfw.CreateWindow(int(gopher.Width), int(gopher.Height), "Gopher3D", nil, nil)
+	gopher.window, err = glfw.CreateWindow(int(gopher.Width), int(gopher.Height), "Gopher3D", nil, nil)
 
 	if err != nil {
 		logger.Log.Error("Could not create glfw window: %v", zap.Error(err))
 	}
 
 	if _, ok := gopher.rendererAPI.(*renderer.OpenGLRenderer); ok {
-		window.MakeContextCurrent()
+		gopher.window.MakeContextCurrent()
 		if err := gl.Init(); err != nil {
 			logger.Log.Error("Could not initialize OpenGL: %v", zap.Error(err))
 			return
@@ -105,34 +105,35 @@ func (gopher *Gopher) Render(x, y int) {
 		gl.ClearColor(0.0, 0.0, 0.0, 1.0)
 	}
 
-	window.SetPos(x, y)
+	gopher.window.SetPos(x, y)
 
-	gopher.rendererAPI.Init(gopher.Width, gopher.Height, window)
+	gopher.rendererAPI.Init(gopher.Width, gopher.Height, gopher.window)
 
-	camera = renderer.NewCamera(gopher.Width, gopher.Height) // Initialize the global camera variable
+	// TODO: We should be able to create a camera with custom parameters through our API, fixed for now
+	gopher.Camera = renderer.NewCamera(gopher.Width, gopher.Height)
 
 	//window.SetInputMode(glfw.CursorMode, glfw.CursorDisabled) // Hide and capture the cursor
-	window.SetInputMode(glfw.CursorMode, glfw.CursorNormal) // Set cursor to normal mode initially
+	gopher.window.SetInputMode(glfw.CursorMode, glfw.CursorNormal) // Set cursor to normal mode initially
 
-	window.SetCursorPosCallback(mouseCallback) // Set the callback function for mouse movement
+	gopher.window.SetCursorPosCallback(gopher.mouseCallback) // Set the callback function for mouse movement
 
-	gopher.RenderLoop(window, camera)
+	gopher.RenderLoop()
 }
 
-func (gopher *Gopher) RenderLoop(window *glfw.Window, camera renderer.Camera) {
+func (gopher *Gopher) RenderLoop() {
 	var lastTime = glfw.GetTime()
-	for !window.ShouldClose() {
+	for !gopher.window.ShouldClose() {
 		currentTime := glfw.GetTime()
 		deltaTime := currentTime - lastTime
 		lastTime = currentTime
 
-		camera.ProcessKeyboard(window, float32(deltaTime))
+		gopher.Camera.ProcessKeyboard(gopher.window, float32(deltaTime))
 		behaviour.GlobalBehaviourManager.UpdateAll()
-		gopher.rendererAPI.Render(camera, gopher.Light)
+		gopher.rendererAPI.Render(*gopher.Camera, gopher.Light)
 
 		switch gopher.rendererAPI.(type) {
 		case *renderer.OpenGLRenderer:
-			window.SwapBuffers()
+			gopher.window.SwapBuffers()
 		}
 		glfw.PollEvents()
 
@@ -194,7 +195,7 @@ func (gopher *Gopher) AddModelBatch(models []*renderer.Model) {
 }
 
 // Mouse callback function
-func mouseCallback(w *glfw.Window, xpos, ypos float64) {
+func (gopher *Gopher) mouseCallback(w *glfw.Window, xpos, ypos float64) {
 	// Check if the window is focused and the right mouse button is pressed
 	if w.GetAttrib(glfw.Focused) == glfw.True && w.GetMouseButton(glfw.MouseButtonRight) == glfw.Press {
 		if firstMouse {
@@ -209,7 +210,7 @@ func mouseCallback(w *glfw.Window, xpos, ypos float64) {
 		lastX = xpos
 		lastY = ypos
 
-		camera.ProcessMouseMovement(float32(xoffset), float32(yoffset), true)
+		gopher.Camera.ProcessMouseMovement(float32(xoffset), float32(yoffset), true)
 	} else {
 		firstMouse = true
 	}

@@ -24,10 +24,6 @@ func main() {
 func (mb *TestBehaviour) Start() {
 	mb.engine.SetFrustumCulling(false)
 	mb.engine.SetFaceCulling(false)
-	/*
-		mb.engine.Camera.Yaw = 0
-		mb.engine.Camera.Pitch = 0
-	*/
 
 }
 

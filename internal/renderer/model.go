@@ -8,6 +8,7 @@ import (
 	"math"
 
 	"github.com/go-gl/mathgl/mgl32"
+	vk "github.com/vulkan-go/vulkan"
 	"go.uber.org/zap"
 )
 
@@ -29,6 +30,11 @@ type Model struct {
 	Scale                mgl32.Vec3
 	Rotation             mgl32.Quat
 	Vertices             []float32
+	Indices              []uint32
+	vertexBuffer         vk.Buffer
+	vertexMemory         vk.DeviceMemory
+	indexBuffer          vk.Buffer
+	indexMemory          vk.DeviceMemory
 	Normals              []float32
 	Faces                []int32
 	TextureCoords        []float32

@@ -43,7 +43,7 @@ func NewDefaultCamera(height int32, width int32) *Camera {
 	camera := Camera{
 		Position:    mgl32.Vec3{1, 0, 100},
 		Front:       mgl32.Vec3{0, 0, -1},
-		Up:          mgl32.Vec3{0, 1, 0}, // Changed to the conventional up vector
+		Up:          mgl32.Vec3{0, 1, 0},
 		WorldUp:     mgl32.Vec3{0, 1, 0},
 		Pitch:       0.0,
 		Yaw:         -90.0,
@@ -131,14 +131,8 @@ func (c *Camera) ProcessMouseMovement(xoffset, yoffset float32, constrainPitch b
 	} else {
 		c.Pitch += yoffset
 	}
-
 	if constrainPitch {
-		if c.Pitch > 89.0 {
-			c.Pitch = 89.0
-		}
-		if c.Pitch < -89.0 {
-			c.Pitch = -89.0
-		}
+		c.Pitch = mgl32.Clamp(c.Pitch, -89.0, 89.0) // Prevent extreme pitch values
 	}
 	c.updateCameraVectors()
 }

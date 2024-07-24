@@ -2,8 +2,10 @@ package renderer
 
 import (
 	"Gopher3D/internal/logger"
+	"fmt"
 	"image"
 	"runtime"
+	"unsafe"
 
 	"github.com/go-gl/glfw/v3.3/glfw"
 	as "github.com/vulkan-go/asche"
@@ -19,15 +21,12 @@ type VulkanRenderer struct {
 	Debug                 bool
 	Shader                Shader
 	Models                []*Model
+	textures              map[string]*Texture
 }
 type Application struct {
 	*Scene
 	debugEnabled bool
 	window       *glfw.Window
-}
-
-type BaseAPP struct {
-	as.BaseVulkanApp
 }
 
 func NewVulkanApp(window *glfw.Window) *Application {
@@ -46,18 +45,21 @@ func (app *Application) VulkanSurface(instance vk.Instance) (surface vk.Surface)
 		logger.Log.Error("Failed to create window surface", zap.Error(err))
 		return vk.NullSurface
 	}
+	logger.Log.Info("Vulkan surface created", zap.Any("Surface", surface))
 	return surface
 }
 
 func (a *Application) VulkanLayers() []string {
 	return []string{
-		//		"VK_LAYER_GOOGLE_threading",
-		// 		"VK_LAYER_LUNARG_parameter_validation",
-		//		"VK_LAYER_LUNARG_object_tracker",
-		//		"VK_LAYER_LUNARG_core_validation",
-		//		"VK_LAYER_LUNARG_api_dump",
-		//		"VK_LAYER_LUNARG_swapchain",
-		///		"VK_LAYER_GOOGLE_unique_objects",
+		/*
+			"VK_LAYER_GOOGLE_threading",
+			"VK_LAYER_LUNARG_parameter_validation",
+			"VK_LAYER_LUNARG_object_tracker",
+			"VK_LAYER_LUNARG_core_validation",
+			"VK_LAYER_LUNARG_api_dump",
+			"VK_LAYER_LUNARG_swapchain",
+			"VK_LAYER_GOOGLE_unique_objects",
+		*/
 	}
 }
 
@@ -67,14 +69,6 @@ func (app *Application) VulkanDebug() bool {
 
 func (app *Application) VulkanAppName() string {
 	return "Gopher3D"
-}
-
-func (app *Application) VulkanAppVersion() vk.Version {
-	return vk.Version(vk.Version11)
-}
-
-func (app *Application) VulkanAPIVersion() vk.Version {
-	return vk.Version(vk.ApiVersion11)
 }
 
 func (app *Application) VulkanInstanceExtensions() []string {
@@ -106,6 +100,7 @@ func (rend *VulkanRenderer) Init(width, height int32, window *glfw.Window) {
 	vk.SetGetInstanceProcAddr(glfw.GetVulkanGetInstanceProcAddress())
 	rend.VulkanApp = NewVulkanApp(window)
 	rend.VulkanApp.window = window
+	rend.textures = make(map[string]*Texture) // Initialize the texture map
 
 	logger.Log.Info("Initializing Vulkan Renderer")
 
@@ -123,6 +118,8 @@ func (rend *VulkanRenderer) Init(width, height int32, window *glfw.Window) {
 		logger.Log.Error("Failed to create Asche platform", zap.Error(err))
 		return
 	}
+
+	logger.Log.Info("Asche platform created", zap.Any("Platform", platform))
 
 	dim := rend.VulkanApp.Context().SwapchainDimensions()
 	logger.Log.Info("Swapchain Initialized", zap.Any("Swapchain dimensions:", dim))
@@ -156,11 +153,42 @@ func (rend *VulkanRenderer) Render(camera Camera, light *Light) {
 }
 
 func (rend *VulkanRenderer) AddModel(model *Model) {
-	rend.Models = append(rend.Models, model)
+	logger.Log.Info("Adding model to renderer")
+	// Prepare vertex and index buffers
+	vertexBuffer, vertexMemory, err := rend.VulkanApp.Scene.prepareVertexBuffer(model.Vertices)
+	if err != nil {
+		logger.Log.Error("Failed to prepare vertex buffer", zap.Error(err))
+		return
+	}
+	indexBuffer, indexMemory, err := rend.VulkanApp.Scene.prepareIndexBuffer(model.Indices)
+	if err != nil {
+		logger.Log.Error("Failed to prepare index buffer", zap.Error(err))
+		return
+	}
+	model.vertexBuffer = vertexBuffer
+	model.vertexMemory = vertexMemory
+	model.indexBuffer = indexBuffer
+	model.indexMemory = indexMemory
+
+	// Add model to the scene's model list
+	rend.VulkanApp.Scene.models = append(rend.VulkanApp.Scene.models, model)
 }
 
 func (rend *VulkanRenderer) LoadTexture(path string) (uint32, error) {
-	return 0, nil
+	if texture, exists := rend.textures[path]; exists {
+		logger.Log.Info("Texture already loaded", zap.String("path", path))
+		return uint32(uintptr(unsafe.Pointer(texture.image))), nil // Return the existing texture ID
+	}
+	// Load texture using the Scene's prepareTextureImage method
+	logger.Log.Info("Loading texture", zap.String("path", path))
+	texture := rend.VulkanApp.Scene.prepareTextureImage(path, vk.ImageTilingOptimal, vk.ImageUsageTransferDstBit|vk.ImageUsageSampledBit, vk.MemoryPropertyDeviceLocalBit)
+	if texture == nil {
+		return 0, fmt.Errorf("failed to load texture from path: %s", path)
+	}
+	// Store the texture in the map
+	rend.textures[path] = texture
+	// Return the texture's image handle as the texture ID
+	return uint32(uintptr(unsafe.Pointer(texture.image))), nil
 }
 
 func (rend *VulkanRenderer) CreateTextureFromImage(img image.Image) (uint32, error) {
@@ -186,7 +214,6 @@ func (rend *VulkanRenderer) SetFaceCulling(enabled bool) {
 // TODO: Mouse movement is not working for some reason, check vectors up, down , etc
 func updateCamera(rend *VulkanRenderer, camera Camera) {
 	rend.VulkanApp.projectionMatrix = camera.GetViewProjectionVulkan()
-	rend.VulkanApp.projectionMatrix[1][1] *= -1
+	rend.VulkanApp.projectionMatrix[1][1] *= -1 // Flip Y-axis for Vulkan
 	rend.VulkanApp.viewMatrix = camera.GetViewMatrixVulkan()
-
 }

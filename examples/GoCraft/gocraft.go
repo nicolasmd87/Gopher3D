@@ -29,13 +29,13 @@ func NewGocraftBehaviour(engine *engine.Gopher) {
 	behaviour.GlobalBehaviourManager.Add(gocraftBehaviour)
 }
 func main() {
-	engine := engine.NewGopher(engine.OPENGL)
+	engine := engine.NewGopher(engine.OPENGL) // or engine.VULKAN
 
 	NewGocraftBehaviour(engine)
 
 	// FULLSCREEN
-	engine.Width = 1980
-	engine.Height = 1080
+	engine.Width = 1080
+	engine.Height = 720
 
 	// WINDOW POS IN X,Y AND MODEL
 	engine.Render(0, 0)
@@ -56,7 +56,7 @@ func (mb *GoCraftBehaviour) Update() {
 func createWorld(mb *GoCraftBehaviour) {
 	modelBatch = make([]*renderer.Model, mb.engine.Height*mb.engine.Width)
 	model, _ := loader.LoadObjectWithPath("../resources/obj/Cube.obj", true)
-	model.SetTexture("../resources/textures/Grass.png")
+	//model.SetTexture("../resources/textures/Grass.png")
 	// Tweak this params for fun
 	// Warning: When batching is on we can spawn the scene before hand
 	// If the height and width are too big, it will take a while to load

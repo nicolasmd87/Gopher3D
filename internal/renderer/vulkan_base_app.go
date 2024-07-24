@@ -3,10 +3,13 @@ package renderer
 import (
 	"Gopher3D/internal/logger"
 	"bytes"
+	"encoding/binary"
+	"fmt"
 	"image"
 	"image/draw"
 	"image/png"
 	"log"
+	"math"
 	"unsafe"
 
 	as "github.com/vulkan-go/asche"
@@ -25,6 +28,7 @@ func NewScene(spinAngle float32) *Scene {
 
 type Scene struct {
 	as.BaseVulkanApp
+
 	Debug bool
 
 	width      uint32
@@ -32,6 +36,7 @@ type Scene struct {
 	format     vk.Format
 	colorSpace vk.ColorSpace
 
+	models            []*Model
 	textures          []*Texture
 	depth             *Depth
 	useStagingBuffers bool
@@ -49,6 +54,12 @@ type Scene struct {
 	modelMatrix      lin.Mat4x4
 
 	spinAngle float32
+
+	vertexBuffer vk.Buffer
+	vertexMemory vk.DeviceMemory
+	indexBuffer  vk.Buffer
+	indexMemory  vk.DeviceMemory
+	platform     as.Platform
 }
 
 func (s *Scene) prepareDepth() {
@@ -459,7 +470,15 @@ func (s *Scene) drawBuildCommandBuffer(res *as.SwapchainImageResources, cmd vk.C
 		},
 	}})
 
-	vk.CmdDraw(cmd, 12*3, 1, 0, 0)
+	// Bind vertex and index buffers for each model and issue draw calls
+	for _, model := range s.models {
+		vertexBuffers := []vk.Buffer{model.vertexBuffer}
+		offsets := []vk.DeviceSize{0}
+		vk.CmdBindVertexBuffers(cmd, 0, 1, vertexBuffers, offsets)
+		vk.CmdBindIndexBuffer(cmd, model.indexBuffer, 0, vk.IndexTypeUint32)
+		vk.CmdDrawIndexed(cmd, uint32(len(model.Indices)), 1, 0, 0, 0)
+	}
+
 	// Note that ending the renderpass changes the image's layout from
 	// vk.ImageLayoutColorAttachmentOptimal to vk.ImageLayoutPresentSrc
 	vk.CmdEndRenderPass(cmd)
@@ -467,13 +486,6 @@ func (s *Scene) drawBuildCommandBuffer(res *as.SwapchainImageResources, cmd vk.C
 	graphicsQueueIndex := s.Context().Platform().GraphicsQueueFamilyIndex()
 	presentQueueIndex := s.Context().Platform().PresentQueueFamilyIndex()
 	if graphicsQueueIndex != presentQueueIndex {
-		// Separate Present Queue Case
-		//
-		// We have to transfer ownership from the graphics queue family to the
-		// present queue family to be able to present.  Note that we don't have
-		// to transfer from present queue family back to graphics queue family at
-		// the start of the next frame because we don't care about the image's
-		// contents at that point.
 		vk.CmdPipelineBarrier(cmd,
 			vk.PipelineStageFlags(vk.PipelineStageColorAttachmentOutputBit),
 			vk.PipelineStageFlags(vk.PipelineStageBottomOfPipeBit),
@@ -498,10 +510,9 @@ func (s *Scene) drawBuildCommandBuffer(res *as.SwapchainImageResources, cmd vk.C
 	if ret != vk.Success {
 		logger.Log.Error("Failed to end command buffer")
 	}
-
 }
 
-func (s *Scene) prepareCubeDataBuffers() {
+func (s *Scene) prepareDataBuffers() {
 	dev := s.Context().Device()
 
 	var VP lin.Mat4x4
@@ -512,15 +523,8 @@ func (s *Scene) prepareCubeDataBuffers() {
 	data := vkTexCubeUniform{
 		mvp: MVP,
 	}
-	for i := 0; i < 12*3; i++ {
-		data.position[i][0] = gVertexBufferData[i*3]
-		data.position[i][1] = gVertexBufferData[i*3+1]
-		data.position[i][2] = gVertexBufferData[i*3+2]
-		data.position[i][3] = 1.0
-		data.attr[i][0] = gUVBufferData[2*i]
-		data.attr[i][1] = gUVBufferData[2*i+1]
-		data.attr[i][2] = 0
-		data.attr[i][3] = 0
+	if len(s.models) > 0 {
+		data.gVertexBufferData(s.models[0])
 	}
 
 	dataRaw := data.Data()
@@ -861,9 +865,17 @@ func (s *Scene) VulkanContextPrepare() error {
 	s.height = dim.Height
 	s.width = dim.Width
 
+	logger.Log.Info("Platform", zap.Any("Platform", s.platform))
+	memProperties := s.Context().Platform().MemoryProperties()
+	logMemoryProperties(memProperties)
+	err := validateMemoryHeaps(memProperties)
+	if err != nil {
+		return err
+	}
+
 	s.prepareDepth()
 	s.prepareTextures()
-	s.prepareCubeDataBuffers()
+	s.prepareDataBuffers()
 	s.prepareDescriptorLayout()
 	s.prepareRenderPass()
 	s.preparePipeline()
@@ -977,11 +989,75 @@ func loadTextureData(name string, rowPitch int) ([]byte, int, int, error) {
 	}
 	newImg := image.NewRGBA(img.Bounds())
 	if rowPitch <= 4*img.Bounds().Dy() {
-		// apply the proposed row pitch only if supported,
-		// as we're using only optimal textures.
 		newImg.Stride = rowPitch
 	}
 	draw.Draw(newImg, newImg.Bounds(), img, image.ZP, draw.Src)
 	size := newImg.Bounds().Size()
 	return []byte(newImg.Pix), size.X, size.Y, nil
+}
+
+func (s *Scene) prepareVertexBuffer(vertices []float32) (vk.Buffer, vk.DeviceMemory, error) {
+	data := make([]byte, len(vertices)*4) // 4 bytes per float32
+	for i, v := range vertices {
+		binary.LittleEndian.PutUint32(data[i*4:], math.Float32bits(v))
+	}
+
+	dev := s.Context().Device()
+	memProps := s.Context().Platform().MemoryProperties()
+	buf := as.CreateBuffer(dev, memProps, data, vk.BufferUsageVertexBufferBit)
+
+	if buf.Buffer == nil || buf.Memory == nil {
+		logger.Log.Error("Failed to create vertex buffer")
+		return vk.Buffer(nil), vk.DeviceMemory(nil), fmt.Errorf("failed to create vertex buffer")
+	}
+
+	return buf.Buffer, buf.Memory, nil
+}
+
+func (s *Scene) prepareIndexBuffer(indices []uint32) (vk.Buffer, vk.DeviceMemory, error) {
+	logger.Log.Info("Scene", zap.Any("Scene", s))
+	data := make([]byte, len(indices)*4) // 4 bytes per uint32
+	for i, v := range indices {
+		binary.LittleEndian.PutUint32(data[i*4:], v)
+	}
+
+	dev := s.Context().Device()
+	memProps := s.Context().Platform().MemoryProperties()
+
+	// Log memory properties for debugging
+	logMemoryProperties(memProps)
+
+	// Create buffer with asche API
+	buf := as.CreateBuffer(dev, memProps, data, vk.BufferUsageIndexBufferBit)
+
+	if buf.Buffer == nil || buf.Memory == nil {
+		logger.Log.Error("Buffer or memory allocation failed")
+		return vk.Buffer(nil), vk.DeviceMemory(nil), fmt.Errorf("failed to create index buffer: buffer or memory is nil")
+	}
+
+	return buf.Buffer, buf.Memory, nil
+}
+
+func logMemoryProperties(memProperties vk.PhysicalDeviceMemoryProperties) {
+	logger.Log.Info("Memory Properties", zap.Uint32("MemoryTypeCount", memProperties.MemoryTypeCount))
+	logger.Log.Info("Memory Properties", zap.Uint32("MemoryHeapCount", memProperties.MemoryHeapCount))
+	logger.Log.Info("Memory", zap.Any("Properties", memProperties))
+	for i := uint32(0); i < memProperties.MemoryTypeCount; i++ {
+		memType := memProperties.MemoryTypes[i]
+		logger.Log.Info("Memory Type", zap.Uint32("Index", i), zap.Uint32("HeapIndex", memType.HeapIndex), zap.Uint32("PropertyFlags", uint32(memType.PropertyFlags)))
+	}
+	for i := uint32(0); i < memProperties.MemoryHeapCount; i++ {
+		heap := memProperties.MemoryHeaps[i]
+		logger.Log.Info("Memory Heap", zap.Uint32("Index", i), zap.Uint64("Size", uint64(heap.Size)), zap.Uint32("Flags", uint32(heap.Flags)))
+	}
+}
+
+func validateMemoryHeaps(memProperties vk.PhysicalDeviceMemoryProperties) error {
+	for i := uint32(0); i < memProperties.MemoryHeapCount; i++ {
+		heap := memProperties.MemoryHeaps[i]
+		if heap.Size == 0 {
+			return fmt.Errorf("memory heap %d has zero size", i)
+		}
+	}
+	return nil
 }

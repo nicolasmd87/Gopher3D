@@ -114,7 +114,8 @@ func LoadModel(filename string, recalculateNormals bool) (*renderer.Model, error
 				if material, ok := modelMaterials[currentMaterialName]; ok {
 					model.Material = material
 				} else {
-					logger.Log.Warn("Material not found", zap.String("Material:", currentMaterialName))
+					// TODO: Change log to Warn or Info
+					logger.Log.Debug("Material not found", zap.String("Material:", currentMaterialName))
 				}
 			}
 		}

@@ -58,7 +58,6 @@ type Material struct {
 	TextureID     uint32 // OpenGL texture ID
 }
 
-// TODO: This could be moved to a separate model package with a model interface
 func (m *Model) RotateModel(angleX, angleY float32, angleZ float32) {
 	// Create quaternions for each axis
 	rotationX := mgl32.QuatRotate(mgl32.DegToRad(angleX), mgl32.Vec3{1, 0, 0})

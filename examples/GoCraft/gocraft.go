@@ -33,12 +33,11 @@ func main() {
 
 	NewGocraftBehaviour(engine)
 
-	// FULLSCREEN
-	engine.Width = 1080
-	engine.Height = 720
+	engine.Width = 720
+	engine.Height = 480
 
 	// WINDOW POS IN X,Y AND MODEL
-	engine.Render(0, 0)
+	engine.Render(550, 550)
 }
 func (mb *GoCraftBehaviour) Start() {
 	mb.engine.Light = renderer.CreateLight()
@@ -54,7 +53,6 @@ func (mb *GoCraftBehaviour) Update() {
 
 // May take a while to load, this is until we fix perfomance issues, this is a good benchmark in the meantime
 func createWorld(mb *GoCraftBehaviour) {
-	modelBatch = make([]*renderer.Model, mb.engine.Height*mb.engine.Width)
 	model, _ := loader.LoadObjectWithPath("../resources/obj/Cube.obj", true)
 	//model.SetTexture("../resources/textures/Grass.png")
 	// Tweak this params for fun
@@ -63,7 +61,6 @@ func createWorld(mb *GoCraftBehaviour) {
 	mb.worldHeight = 500
 	mb.worldWidth = 500
 	mb.noiseDistortion = 10
-	mb.batchModels = true
 	// Camera frustum culling and face culling for some extra FPS
 	mb.engine.SetFrustumCulling(true)
 	mb.engine.SetFaceCulling(true)

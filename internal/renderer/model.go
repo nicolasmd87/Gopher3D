@@ -140,6 +140,24 @@ func ApplyModelTransformation(vertex, position, scale mgl32.Vec3, rotation mgl32
 	return transformedVertex
 }
 
+func (m *Model) SetDiffuseColor(r, g, b float32) {
+	if m.Material == nil {
+		logger.Log.Info("Setting default material")
+		m.Material = DefaultMaterial
+	}
+	m.Material.DiffuseColor = [3]float32{r, g, b}
+	m.IsDirty = true // Mark the model as dirty for re-rendering
+}
+
+func (m *Model) SetSpecularColor(r, g, b float32) {
+	if m.Material == nil {
+		logger.Log.Info("Setting default material")
+		m.Material = DefaultMaterial
+	}
+	m.Material.SpecularColor = [3]float32{r, g, b}
+	m.IsDirty = true // Mark the model as dirty for re-rendering
+}
+
 func (m *Model) SetTexture(texturePath string) {
 	// TODO: Use THE CONFIG to know which renderer to use
 	textureID, err := (&OpenGLRenderer{}).LoadTexture(texturePath)

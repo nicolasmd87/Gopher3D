@@ -147,11 +147,9 @@ func LoadModel(filename string, recalculateNormals bool) (*renderer.Model, error
 		interleavedData = append(interleavedData, normals[i*3:i*3+3]...)
 	}
 
-	model = &renderer.Model{
-		InterleavedData: interleavedData,
-		Vertices:        vertices,
-		Faces:           faces,
-	}
+	model.InterleavedData = interleavedData
+	model.Vertices = vertices
+	model.Faces = faces
 
 	model.Position = [3]float32{0, 0, 0}
 	model.Rotation = mgl32.Quat{}

@@ -48,7 +48,6 @@ func (mb *TestBehaviour) Start() {
 }
 
 func (mb *TestBehaviour) Update() {
-	// I want to move the model in the Y axis
-	mb.model.SetPosition(mb.model.Position[0], mb.model.Position[1]+0.005, mb.model.Position[2])
-	mb.model.RotateModel(2.10, 0, 0)
+	mb.model.SetPosition(mb.model.X(), mb.model.Y()+0.005, mb.model.Z())
+	mb.model.Rotate(2.10, 0, 0)
 }

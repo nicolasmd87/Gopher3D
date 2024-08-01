@@ -58,7 +58,19 @@ type Material struct {
 	TextureID     uint32 // OpenGL texture ID
 }
 
-func (m *Model) RotateModel(angleX, angleY, angleZ float32) {
+func (m *Model) X() float32 {
+	return m.Position[0]
+}
+
+func (m *Model) Y() float32 {
+	return m.Position[1]
+}
+
+func (m *Model) Z() float32 {
+	return m.Position[2]
+}
+
+func (m *Model) Rotate(angleX, angleY, angleZ float32) {
 	if m.Rotation == (mgl32.Quat{}) {
 		m.Rotation = mgl32.QuatIdent()
 	}

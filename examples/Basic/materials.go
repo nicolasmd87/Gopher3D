@@ -22,13 +22,17 @@ func NewMaterialExampleBehaviour(engine *engine.Gopher) {
 }
 
 func main() {
-	engine := engine.NewGopher(engine.OPENGL)
-	engine.Light = renderer.CreateLight()
+	engine := engine.NewGopher(engine.VULKAN)
+
 	NewMaterialExampleBehaviour(engine)
 	engine.Render(768, 50)
 }
 
 func (mb *GoCraftBehaviour) Start() {
+	mb.engine.Light = renderer.CreateLight()
+	// OpenGL and Vulkan use different coordinate systems
+	mb.engine.Camera.InvertMouse = false
+	mb.engine.SetDebugMode(true)
 	createWorld(mb)
 }
 

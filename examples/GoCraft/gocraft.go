@@ -29,16 +29,15 @@ func NewGocraftBehaviour(engine *engine.Gopher) {
 	behaviour.GlobalBehaviourManager.Add(gocraftBehaviour)
 }
 func main() {
-	engine := engine.NewGopher(engine.OPENGL)
+	engine := engine.NewGopher(engine.OPENGL) // or engine.VULKAN
 
 	NewGocraftBehaviour(engine)
 
-	// FULLSCREEN
-	engine.Width = 1980
-	engine.Height = 1080
+	engine.Width = 720
+	engine.Height = 480
 
 	// WINDOW POS IN X,Y AND MODEL
-	engine.Render(0, 0)
+	engine.Render(550, 550)
 }
 func (mb *GoCraftBehaviour) Start() {
 	mb.engine.Light = renderer.CreateLight()
@@ -54,19 +53,21 @@ func (mb *GoCraftBehaviour) Update() {
 
 // May take a while to load, this is until we fix perfomance issues, this is a good benchmark in the meantime
 func createWorld(mb *GoCraftBehaviour) {
-	modelBatch = make([]*renderer.Model, mb.engine.Height*mb.engine.Width)
 	model, _ := loader.LoadObjectWithPath("../resources/obj/Cube.obj", true)
-	model.SetTexture("../resources/textures/Grass.png")
+	//model.SetTexture("../resources/textures/Grass.png")
 	// Tweak this params for fun
 	// Warning: When batching is on we can spawn the scene before hand
 	// If the height and width are too big, it will take a while to load
 	mb.worldHeight = 500
 	mb.worldWidth = 500
 	mb.noiseDistortion = 10
-	mb.batchModels = true
 	// Camera frustum culling and face culling for some extra FPS
 	mb.engine.SetFrustumCulling(true)
 	mb.engine.SetFaceCulling(true)
+
+	// OpenGL and Vulkan use different coordinate systems
+	mb.engine.Camera.InvertMouse = false
+
 	InitScene(mb, model)
 }
 

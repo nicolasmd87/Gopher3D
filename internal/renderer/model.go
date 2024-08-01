@@ -8,6 +8,7 @@ import (
 	"math"
 
 	"github.com/go-gl/mathgl/mgl32"
+	vk "github.com/vulkan-go/vulkan"
 	"go.uber.org/zap"
 )
 
@@ -29,6 +30,11 @@ type Model struct {
 	Scale                mgl32.Vec3
 	Rotation             mgl32.Quat
 	Vertices             []float32
+	Indices              []uint32
+	vertexBuffer         vk.Buffer
+	vertexMemory         vk.DeviceMemory
+	indexBuffer          vk.Buffer
+	indexMemory          vk.DeviceMemory
 	Normals              []float32
 	Faces                []int32
 	TextureCoords        []float32
@@ -52,23 +58,35 @@ type Material struct {
 	TextureID     uint32 // OpenGL texture ID
 }
 
-// TODO: This could be moved to a separate model package with a model interface
-func (m *Model) RotateModel(angleX, angleY float32, angleZ float32) {
-	// Create quaternions for each axis
+func (m *Model) X() float32 {
+	return m.Position[0]
+}
+
+func (m *Model) Y() float32 {
+	return m.Position[1]
+}
+
+func (m *Model) Z() float32 {
+	return m.Position[2]
+}
+
+func (m *Model) Rotate(angleX, angleY, angleZ float32) {
+	if m.Rotation == (mgl32.Quat{}) {
+		m.Rotation = mgl32.QuatIdent()
+	}
 	rotationX := mgl32.QuatRotate(mgl32.DegToRad(angleX), mgl32.Vec3{1, 0, 0})
 	rotationY := mgl32.QuatRotate(mgl32.DegToRad(angleY), mgl32.Vec3{0, 1, 0})
 	rotationZ := mgl32.QuatRotate(mgl32.DegToRad(angleZ), mgl32.Vec3{0, 0, 1})
-
-	// Combine new rotation with existing rotation
 	m.Rotation = m.Rotation.Mul(rotationX).Mul(rotationY).Mul(rotationZ)
+	m.updateModelMatrix()
 	m.IsDirty = true
 }
 
 // SetPosition sets the position of the model
 func (m *Model) SetPosition(x, y, z float32) {
-	m.ModelMatrix = mgl32.Translate3D(x, y, z)
 	m.Position = mgl32.Vec3{x, y, z}
 	m.CalculateBoundingSphere()
+	m.updateModelMatrix()
 	m.IsDirty = true
 }
 
@@ -97,21 +115,14 @@ func (m *Model) CalculateBoundingSphere() {
 	m.BoundingSphereCenter = center
 	m.BoundingSphereRadius = float32(math.Sqrt(float64(maxDistanceSq)))
 }
-
-func (m *Model) SetTexture(texturePath string) {
-	// TODO: Use THE CONFIG to know which renderer to use
-	textureID, err := (&OpenGLRenderer{}).LoadTexture(texturePath)
-	if err != nil {
-		logger.Log.Error("Failed to load texture", zap.String("path", texturePath), zap.Error(err))
-		return
-	}
-
-	if m.Material == nil {
-		logger.Log.Info("Setting default material")
-		m.Material = DefaultMaterial
-
-	}
-	m.Material.TextureID = textureID
+func (m *Model) updateModelMatrix() {
+	// Matrix multiplication order: scale -> rotate -> translate
+	scaleMatrix := mgl32.Scale3D(m.Scale[0], m.Scale[1], m.Scale[2])
+	rotationMatrix := m.Rotation.Mat4()
+	translationMatrix := mgl32.Translate3D(m.Position[0], m.Position[1], m.Position[2])
+	// Combine the transformations: ModelMatrix = translation * rotation * scale
+	m.ModelMatrix = translationMatrix.Mul4(rotationMatrix).Mul4(scaleMatrix)
+	m.CalculateBoundingSphere()
 }
 
 // Aux functions, maybe I need to move them to another package
@@ -127,6 +138,40 @@ func ApplyModelTransformation(vertex, position, scale mgl32.Vec3, rotation mgl32
 	transformedVertex := rotatedVertex.Add(position)
 
 	return transformedVertex
+}
+
+func (m *Model) SetDiffuseColor(r, g, b float32) {
+	if m.Material == nil {
+		logger.Log.Info("Setting default material")
+		m.Material = DefaultMaterial
+	}
+	m.Material.DiffuseColor = [3]float32{r, g, b}
+	m.IsDirty = true // Mark the model as dirty for re-rendering
+}
+
+func (m *Model) SetSpecularColor(r, g, b float32) {
+	if m.Material == nil {
+		logger.Log.Info("Setting default material")
+		m.Material = DefaultMaterial
+	}
+	m.Material.SpecularColor = [3]float32{r, g, b}
+	m.IsDirty = true // Mark the model as dirty for re-rendering
+}
+
+func (m *Model) SetTexture(texturePath string) {
+	// TODO: Use THE CONFIG to know which renderer to use
+	textureID, err := (&OpenGLRenderer{}).LoadTexture(texturePath)
+	if err != nil {
+		logger.Log.Error("Failed to load texture", zap.String("path", texturePath), zap.Error(err))
+		return
+	}
+
+	if m.Material == nil {
+		logger.Log.Info("Setting default material")
+		m.Material = DefaultMaterial
+
+	}
+	m.Material.TextureID = textureID
 }
 
 func SetDefaultTexture(RendererAPI Render) {

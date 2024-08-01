@@ -4,23 +4,29 @@ package renderer
 import (
 	"math"
 
+	"github.com/xlab/linmath"
+
 	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/go-gl/mathgl/mgl32"
 )
 
 type Camera struct {
-	position     mgl32.Vec3
-	front        mgl32.Vec3
-	up           mgl32.Vec3
-	right        mgl32.Vec3
-	worldUp      mgl32.Vec3
-	pitch        float32
-	projection   mgl32.Mat4
-	yaw          float32
-	speed        float32
-	sensitivity  float32
-	fov          float32
-	lastX, lastY float32
+	Position     mgl32.Vec3
+	Front        mgl32.Vec3
+	Up           mgl32.Vec3
+	Right        mgl32.Vec3
+	WorldUp      mgl32.Vec3
+	Pitch        float32
+	Projection   mgl32.Mat4
+	Yaw          float32
+	Speed        float32
+	Sensitivity  float32
+	Fov          float32
+	Near         float32
+	Far          float32
+	AspectRatio  float32
+	LastX, LastY float32
+	InvertMouse  bool
 	firstMouse   bool
 }
 
@@ -33,41 +39,67 @@ type Frustum struct {
 	Planes [6]Plane
 }
 
-func NewCamera(height int32, width int32) Camera {
+func NewDefaultCamera(height int32, width int32) *Camera {
 	camera := Camera{
-		position:    mgl32.Vec3{1, 0, 200},
-		front:       mgl32.Vec3{0, 0, -1},
-		up:          mgl32.Vec3{0, 1, 0}, // Changed to the conventional up vector
-		worldUp:     mgl32.Vec3{0, 1, 0},
-		pitch:       0.0,
-		yaw:         -90.0,
-		speed:       70,
-		sensitivity: 0.1,
-		fov:         45.0,
-		lastX:       float32(width) / 2,
-		lastY:       float32(height) / 2,
+		Position:    mgl32.Vec3{1, 0, 100},
+		Front:       mgl32.Vec3{0, 0, -1},
+		Up:          mgl32.Vec3{0, 1, 0},
+		WorldUp:     mgl32.Vec3{0, 1, 0},
+		Pitch:       0.0,
+		Yaw:         -90.0,
+		Speed:       70,
+		Sensitivity: 0.1,
+		Fov:         45.0,
+		Near:        0.1,
+		Far:         1000.0,
+		LastX:       float32(width) / 2,
+		LastY:       float32(height) / 2,
+		AspectRatio: float32(height) / float32(width),
 		firstMouse:  true,
+		InvertMouse: true,
 	}
 	camera.updateCameraVectors()
-	// Ideally, the aspect ratio should be calculated dynamically based on the window dimensions
-	projection := mgl32.Perspective(mgl32.DegToRad(camera.fov), float32(height)/float32(width), 0.1, 1000.0)
-	camera.projection = projection
-	return camera
+	camera.UpdateProjection()
+	return &camera
 }
 
-func (c *Camera) UpdateProjection(fov, aspectRatio, near, far float32) {
-	c.projection = mgl32.Perspective(mgl32.DegToRad(fov), aspectRatio, near, far)
+func (c *Camera) UpdateProjection() {
+	c.Projection = mgl32.Perspective(mgl32.DegToRad(c.Fov), c.AspectRatio, c.Near, c.Far)
 }
 
 func (c *Camera) GetViewProjection() mgl32.Mat4 {
-	view := mgl32.LookAtV(c.position, c.position.Add(c.front), c.up)
-	return c.projection.Mul4(view)
+	view := mgl32.LookAtV(c.Position, c.Position.Add(c.Front), c.Up)
+	return c.Projection.Mul4(view)
+}
+
+// TODO: THIS IS JUST WHILE I TEST VULKAN INTEGRATION, WE SHOULD NOT BE CONVERTING ANYTHING
+//
+//	WE NEED TO WORK ON A LINMATH CAMERA IMPLEMENTATION FOR VULKAN
+//
+// Assume linmath.Mat4x4 is a struct with a flat array of 16 float32s
+func convertMGL32Mat4ToLinMathMat4x4(m mgl32.Mat4) linmath.Mat4x4 {
+	var viewProjection linmath.Mat4x4
+	for i := 0; i < 4; i++ {
+		for j := 0; j < 4; j++ {
+			viewProjection[i][j] = m[i*4+j]
+		}
+	}
+	return viewProjection
+}
+
+func (c *Camera) GetViewProjectionVulkan() linmath.Mat4x4 {
+	return convertMGL32Mat4ToLinMathMat4x4(c.GetViewProjection())
+}
+
+func (c *Camera) GetViewMatrixVulkan() linmath.Mat4x4 {
+	view := mgl32.LookAtV(c.Position, c.Position.Add(c.Front), c.Up)
+	return convertMGL32Mat4ToLinMathMat4x4(view)
 }
 
 func (c *Camera) ProcessKeyboard(window *glfw.Window, deltaTime float32) {
 	// Compute the right vector
-	c.right = c.front.Cross(c.worldUp).Normalize()
-	baseVelocity := c.speed * deltaTime
+	c.Right = c.Front.Cross(c.WorldUp).Normalize()
+	baseVelocity := c.Speed * deltaTime
 
 	// If Shift is pressed, multiply the velocity by a factor (e.g., 2.5)
 	if window.GetKey(glfw.KeyLeftShift) == glfw.Press || window.GetKey(glfw.KeyRightShift) == glfw.Press {
@@ -75,56 +107,56 @@ func (c *Camera) ProcessKeyboard(window *glfw.Window, deltaTime float32) {
 	}
 
 	if window.GetKey(glfw.KeyW) == glfw.Press {
-		c.position = c.position.Add(c.front.Mul(baseVelocity))
+		c.Position = c.Position.Add(c.Front.Mul(baseVelocity))
 	}
 	if window.GetKey(glfw.KeyS) == glfw.Press {
-		c.position = c.position.Sub(c.front.Mul(baseVelocity))
+		c.Position = c.Position.Sub(c.Front.Mul(baseVelocity))
 	}
 	if window.GetKey(glfw.KeyA) == glfw.Press {
-		c.position = c.position.Sub(c.right.Mul(baseVelocity))
+		c.Position = c.Position.Sub(c.Right.Mul(baseVelocity))
 	}
 	if window.GetKey(glfw.KeyD) == glfw.Press {
-		c.position = c.position.Add(c.right.Mul(baseVelocity))
+		c.Position = c.Position.Add(c.Right.Mul(baseVelocity))
 	}
 }
 
 func (c *Camera) ProcessMouseMovement(xoffset, yoffset float32, constrainPitch bool) {
-	xoffset *= c.sensitivity
-	yoffset *= c.sensitivity
+	xoffset *= c.Sensitivity
+	yoffset *= c.Sensitivity
 
-	c.yaw += xoffset
-	c.pitch += yoffset // subtract yoffset to invert vertical mouse movement
+	c.Yaw += xoffset
 
+	if c.InvertMouse {
+		c.Pitch -= yoffset
+	} else {
+		c.Pitch += yoffset
+	}
 	if constrainPitch {
-		if c.pitch > 89.0 {
-			c.pitch = 89.0
-		}
-		if c.pitch < -89.0 {
-			c.pitch = -89.0
-		}
+		c.Pitch = mgl32.Clamp(c.Pitch, -89.0, 89.0) // Prevent extreme pitch values
 	}
 	c.updateCameraVectors()
 }
 
 func (c *Camera) LookAt(target mgl32.Vec3) {
-	direction := c.position.Sub(target).Normalize()
-	c.yaw = float32(math.Atan2(float64(direction.Z()), float64(direction.X())))
-	c.pitch = float32(math.Atan2(float64(direction.Y()), math.Sqrt(float64(direction.X()*direction.X()+direction.Z()*direction.Z()))))
+	direction := c.Position.Sub(target).Normalize()
+	c.Yaw = float32(math.Atan2(float64(direction.Z()), float64(direction.X())))
+	c.Pitch = float32(math.Atan2(float64(direction.Y()), math.Sqrt(float64(direction.X()*direction.X()+direction.Z()*direction.Z()))))
 	c.updateCameraVectors()
 }
 
 func (c *Camera) updateCameraVectors() {
-	yawRad := mgl32.DegToRad(c.yaw)
-	pitchRad := mgl32.DegToRad(c.pitch)
+	yawRad := mgl32.DegToRad(c.Yaw)
+	pitchRad := mgl32.DegToRad(c.Pitch)
 
 	front := mgl32.Vec3{
 		float32(math.Cos(float64(yawRad)) * math.Cos(float64(pitchRad))),
 		float32(math.Sin(float64(pitchRad))),
 		float32(math.Sin(float64(yawRad)) * math.Cos(float64(pitchRad))),
 	}
-	c.front = front.Normalize()
-	c.right = c.front.Cross(c.worldUp).Normalize()
-	c.up = c.right.Cross(c.front).Normalize()
+
+	c.Front = front.Normalize()
+	c.Right = c.WorldUp.Cross(c.Front).Normalize()
+	c.Up = c.Front.Cross(c.Right).Normalize()
 }
 
 func (c *Camera) CalculateFrustum() Frustum {

@@ -51,7 +51,7 @@ func NewDefaultCamera(height int32, width int32) *Camera {
 		Sensitivity: 0.1,
 		Fov:         45.0,
 		Near:        0.1,
-		Far:         1000.0,
+		Far:         6000.0,
 		LastX:       float32(width) / 2,
 		LastY:       float32(height) / 2,
 		AspectRatio: float32(height) / float32(width),

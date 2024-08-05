@@ -3,6 +3,7 @@ package behaviour
 type PlayerBehaviour interface {
 	Start()
 	Update()
+	UpdateFixed()
 }
 
 type BehaviourWrapper struct {
@@ -31,6 +32,16 @@ func (m *BehaviourManager) UpdateAll() {
 			m.behaviours[i].started = true
 		}
 		m.behaviours[i].Behaviour.Update()
+
+	}
+}
+func (m *BehaviourManager) UpdateAllFixed() {
+	for i := range m.behaviours {
+		if !m.behaviours[i].started {
+			m.behaviours[i].Behaviour.Start()
+			m.behaviours[i].started = true
+		}
+		m.behaviours[i].Behaviour.UpdateFixed()
 
 	}
 }

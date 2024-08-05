@@ -155,8 +155,6 @@ func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
 			gl.UniformMatrix4fv(rend.modelLoc, 1, false, &identityMatrix[0])
 		}
 
-		logger.Log.Info("RENDERER: Material properties", zap.Float32("shininess", rend.Models[i].Material.Shininess), zap.Float32("diffuseColor", rend.Models[i].Material.DiffuseColor[0]), zap.Float32("specularColor", rend.Models[i].Material.SpecularColor[0]))
-
 		// Set material properties for each model
 		diffuseColorUniform := gl.GetUniformLocation(rend.Shader.program, gl.Str("diffuseColor\x00"))
 		gl.Uniform3fv(diffuseColorUniform, 1, &rend.Models[i].Material.DiffuseColor[0])

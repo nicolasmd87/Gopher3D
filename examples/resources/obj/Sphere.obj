@@ -1,7 +1,7 @@
 # 3ds Max Wavefront OBJ Exporter v0.97b - (c)2007 guruware
 # File Created: 25.07.2019 11:44:38
 
-mtllib Dirt Metal.mtl
+# mtllib Dirt Metal.mtl
 
 #
 # object Sphere001

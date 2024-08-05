@@ -25,7 +25,6 @@ type OpenGLRenderer struct {
 	lightIntensityLoc     int32
 	vertexShader          uint32
 	fragmentShader        uint32
-	shaderProgram         uint32
 	Shader                Shader
 	Models                []*Model
 }
@@ -42,17 +41,18 @@ func (rend *OpenGLRenderer) Init(width, height int32, _ *glfw.Window) {
 	rend.Shader = InitShader()
 	rend.vertexShader = genShader(rend.Shader.vertexSource, gl.VERTEX_SHADER)
 	rend.fragmentShader = genShader(rend.Shader.fragmentSource, gl.FRAGMENT_SHADER)
-	rend.shaderProgram = genShaderProgram(rend.vertexShader, rend.fragmentShader)
+	rend.Shader.program = genShaderProgram(rend.vertexShader, rend.fragmentShader)
 
-	gl.UseProgram(rend.shaderProgram)
+	gl.UseProgram(rend.Shader.program)
 
-	rend.modelLoc = gl.GetUniformLocation(rend.shaderProgram, gl.Str("model\x00"))
-	rend.viewProjLoc = gl.GetUniformLocation(rend.shaderProgram, gl.Str("viewProjection\x00"))
+	rend.modelLoc = gl.GetUniformLocation(rend.Shader.program, gl.Str("model\x00"))
+	rend.viewProjLoc = gl.GetUniformLocation(rend.Shader.program, gl.Str("viewProjection\x00"))
 
 	// Set light properties
-	rend.lightPosLoc = gl.GetUniformLocation(rend.shaderProgram, gl.Str("light.position\x00"))
-	rend.lightColorLoc = gl.GetUniformLocation(rend.shaderProgram, gl.Str("light.color\x00"))
-	rend.lightIntensityLoc = gl.GetUniformLocation(rend.shaderProgram, gl.Str("light.intensity\x00"))
+	rend.lightPosLoc = gl.GetUniformLocation(rend.Shader.program, gl.Str("light.position\x00"))
+	rend.lightColorLoc = gl.GetUniformLocation(rend.Shader.program, gl.Str("light.color\x00"))
+	rend.lightIntensityLoc = gl.GetUniformLocation(rend.Shader.program, gl.Str("light.intensity\x00"))
+
 	logger.Log.Info("OpenGL render initialized")
 }
 
@@ -102,7 +102,7 @@ func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
 	}
 
 	viewProjection := camera.GetViewProjection()
-	gl.UseProgram(rend.shaderProgram)
+	gl.UseProgram(rend.Shader.program)
 	gl.UniformMatrix4fv(rend.viewProjLoc, 1, false, &viewProjection[0])
 
 	if light != nil && light.Mode == "static" && !light.Calculated {
@@ -114,7 +114,7 @@ func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
 	}
 
 	// Get the uniform location of the texture sampler in your shader program
-	textureUniform := gl.GetUniformLocation(rend.shaderProgram, gl.Str("uTexture\x00"))
+	textureUniform := gl.GetUniformLocation(rend.Shader.program, gl.Str("uTexture\x00"))
 
 	gl.Enable(gl.DEPTH_TEST)
 
@@ -134,20 +134,20 @@ func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
 	if rend.FrustumCullingEnabled {
 		frustum = camera.CalculateFrustum()
 	}
-	for _, model := range rend.Models {
+	for i := 0; i < len(rend.Models); i++ {
 		// Skip rendering if the model is outside the frustum
-		if rend.FrustumCullingEnabled && !frustum.IntersectsSphere(model.BoundingSphereCenter, model.BoundingSphereRadius) {
+		if rend.FrustumCullingEnabled && !frustum.IntersectsSphere(rend.Models[i].BoundingSphereCenter, rend.Models[i].BoundingSphereRadius) {
 			continue
 		}
 
-		if !model.IsBatched {
-			if model.IsDirty {
+		if !rend.Models[i].IsBatched {
+			if rend.Models[i].IsDirty {
 				// Recalculate the model matrix only if necessary
-				model.ModelMatrix = CalculateModelMatrix(*model)
-				model.IsDirty = false
+				rend.Models[i].ModelMatrix = CalculateModelMatrix(*rend.Models[i])
+				rend.Models[i].IsDirty = false
 			}
 			// Upload the model matrix to the GPU
-			gl.UniformMatrix4fv(rend.modelLoc, 1, false, &model.ModelMatrix[0])
+			gl.UniformMatrix4fv(rend.modelLoc, 1, false, &rend.Models[i].ModelMatrix[0])
 		} else {
 			// For batched models, you might use an identity matrix or skip setting the model matrix altogether.
 			// This depends on whether you pre-transform your vertices or not.
@@ -155,21 +155,32 @@ func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
 			gl.UniformMatrix4fv(rend.modelLoc, 1, false, &identityMatrix[0])
 		}
 
-		// Bind material's texture if available
-		if model.Material != nil && model.Material.TextureID != currentTextureID {
-			gl.BindTexture(gl.TEXTURE_2D, model.Material.TextureID)
-			currentTextureID = model.Material.TextureID
-		} else if model.Material == nil {
-			// Fall back to default material's texture
+		logger.Log.Info("RENDERER: Material properties", zap.Float32("shininess", rend.Models[i].Material.Shininess), zap.Float32("diffuseColor", rend.Models[i].Material.DiffuseColor[0]), zap.Float32("specularColor", rend.Models[i].Material.SpecularColor[0]))
 
+		// Set material properties for each model
+		diffuseColorUniform := gl.GetUniformLocation(rend.Shader.program, gl.Str("diffuseColor\x00"))
+		gl.Uniform3fv(diffuseColorUniform, 1, &rend.Models[i].Material.DiffuseColor[0])
+		specularColorUniform := gl.GetUniformLocation(rend.Shader.program, gl.Str("specularColor\x00"))
+		gl.Uniform3fv(specularColorUniform, 1, &rend.Models[i].Material.SpecularColor[0])
+		shininessUniform := gl.GetUniformLocation(rend.Shader.program, gl.Str("shininess\x00"))
+		gl.Uniform1f(shininessUniform, rend.Models[i].Material.Shininess)
+
+		// Bind material's texture if available
+		if rend.Models[i].Material != nil && rend.Models[i].Material.TextureID != currentTextureID {
+			gl.BindTexture(gl.TEXTURE_2D, rend.Models[i].Material.TextureID)
+			currentTextureID = rend.Models[i].Material.TextureID
+		} else if rend.Models[i].Material == nil {
+			// Fall back to default material's texture
 			gl.BindTexture(gl.TEXTURE_2D, DefaultMaterial.TextureID)
 			currentTextureID = DefaultMaterial.TextureID
 		}
 
 		// Set the sampler to the first texture unit
 		gl.Uniform1i(textureUniform, 0)
+		gl.BindVertexArray(rend.Models[i].VAO)
 
-		gl.DrawElements(gl.TRIANGLES, int32(len(model.Faces)), gl.UNSIGNED_INT, nil)
+		gl.DrawElements(gl.TRIANGLES, int32(len(rend.Models[i].Faces)), gl.UNSIGNED_INT, nil)
+		gl.BindVertexArray(0)
 	}
 	// Disable culling after rendering
 	gl.Disable(gl.CULL_FACE)

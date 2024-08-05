@@ -19,3 +19,12 @@ OpenGL
 #### WORK IN PROGRESS
 
 Vulkan
+
+
+F.A.Q.
+
+- Does it really work? 
+    - Kind of
+    
+- Do you know what you are doing?
+    - Not really

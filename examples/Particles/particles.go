@@ -41,7 +41,8 @@ func main() {
 
 func (pb *ParticleBehaviour) Start() {
 	pb.engine.Camera.InvertMouse = false
-	pb.engine.Camera.Position = mgl.Vec3{0, 50, 500}
+	pb.engine.Camera.Position = mgl.Vec3{0, 50, 1000}
+	pb.engine.Camera.Speed = 5000
 	pb.engine.Light = renderer.CreateLight()
 	pb.engine.SetFrustumCulling(false)
 	pb.engine.SetFaceCulling(true)
@@ -50,21 +51,20 @@ func (pb *ParticleBehaviour) Start() {
 	rand.Seed(time.Now().UnixNano())
 
 	// Create a bunch of particles
-	numParticles := 1250
+	numParticles := 1350
 	for i := 0; i < numParticles; i++ {
 		position := mgl.Vec3{
-			rand.Float32()*100 - 10, // X: random between -10 and 10
-			rand.Float32()*100 - 10, // Y: random between -10 and 10
-			rand.Float32()*100 - 10, // Z: random between -10 and 10
+			rand.Float32()*100 - 50, // X: random between -50 and 50
+			rand.Float32()*100 - 50, // Y: random between -50 and 50
+			rand.Float32()*100 - 50, // Z: random between -50 and 50
 		}
 		color := randomColor()
 		pb.createParticle(position, color)
 	}
-	//pb.engine.SetDebugMode(true)
 }
 
 func randomColor() string {
-	colors := []string{"red", "yellow", "green", "blue"}
+	colors := []string{"red", "yellow", "green", "blue", "purple"}
 	return colors[rand.Intn(len(colors))]
 }
 
@@ -86,15 +86,23 @@ func (pb *ParticleBehaviour) createParticle(position mgl.Vec3, color string) {
 		m.SetDiffuseColor(0.0, 255.0, 0.0)
 	case "blue":
 		m.SetDiffuseColor(0.0, 0.0, 255.0)
+	case "purple":
+		m.SetDiffuseColor(75, 0, 130)
 	}
 
 	m.Material.Name = "Particle_" + color
 
 	pb.engine.AddModel(m)
 
+	initialVelocity := mgl.Vec3{
+		rand.Float32()*2 - 1, // Random velocity component between -1 and 1
+		rand.Float32()*2 - 1,
+		rand.Float32()*2 - 1,
+	}
+
 	particle := &Particle{
 		position: position,
-		velocity: mgl.Vec3{0.0, 0.0, 0.0},
+		velocity: initialVelocity,
 		color:    color,
 		model:    m,
 	}
@@ -106,7 +114,7 @@ func (pb *ParticleBehaviour) Update() {
 }
 
 func (pb *ParticleBehaviour) UpdateFixed() {
-	//UpdateParticles(pb)
+	// UpdateParticles(pb)
 }
 
 func UpdateParticles(pb *ParticleBehaviour) {
@@ -117,7 +125,6 @@ func UpdateParticles(pb *ParticleBehaviour) {
 	}
 }
 
-// We need a physics engine in Gopher3D to handle this kind of stuff
 func (pb *ParticleBehaviour) applyForces(p *Particle) {
 	for _, other := range pb.particles {
 		if p == other {
@@ -129,7 +136,6 @@ func (pb *ParticleBehaviour) applyForces(p *Particle) {
 	}
 }
 
-// Fast inverse square root function (https://en.wikipedia.org/wiki/Fast_inverse_square_root)
 func fastInverseSqrt(x float32) float32 {
 	i := math.Float32bits(x)
 	i = 0x5f3759df - (i >> 1)
@@ -142,15 +148,11 @@ func (pb *ParticleBehaviour) calculateForce(p1, p2 *Particle) mgl.Vec3 {
 	direction := p2.position.Sub(p1.position)
 	distance := direction.Len()
 
-	// Avoid division by zero
 	if distance == 0 {
 		return mgl.Vec3{0, 0, 0}
 	}
 
-	// Normalize the direction vector
 	direction = direction.Normalize()
-
-	// Apply the attraction or repulsion based on color
 	var magnitude float32
 
 	switch p1.color {
@@ -158,41 +160,58 @@ func (pb *ParticleBehaviour) calculateForce(p1, p2 *Particle) mgl.Vec3 {
 		if p2.color == "yellow" {
 			magnitude = 0.01
 		} else if p2.color == "green" {
-			magnitude = -0.01
+			magnitude = 0.01
 		} else if p2.color == "red" {
 			magnitude = 0.01
+		} else if p2.color == "purple" {
+			magnitude = -0.015
+		} else if p2.color == "blue" {
+			magnitude = 0.015
 		}
 	case "yellow":
 		if p2.color == "red" || p2.color == "green" {
 			magnitude = 0.01
 		} else if p2.color == "yellow" {
 			magnitude = -0.01
-		} else if p2.color == "green" {
-			magnitude = 0.01
+		} else if p2.color == "purple" {
+			magnitude = -0.015
+		} else if p2.color == "blue" {
+			magnitude = 0.015
 		}
 	case "green":
 		if p2.color == "yellow" {
 			magnitude = 0.01
 		} else if p2.color == "red" {
-			magnitude = -0.01
+			magnitude = 0.01
 		} else if p2.color == "green" {
 			magnitude = 0.01
 		} else if p2.color == "blue" {
-			magnitude = -0.01
+			magnitude = 0.01
+		} else if p2.color == "purple" {
+			magnitude = 0.015
 		}
 	case "blue":
 		if p2.color == "red" || p2.color == "green" {
-			magnitude = 0.01
-		} else if p2.color == "yellow" {
 			magnitude = -0.01
+		} else if p2.color == "yellow" {
+			magnitude = 0.01
 		} else if p2.color == "blue" {
 			magnitude = 0.01
-		} else if p2.color == "green" {
-			magnitude = 0.01
+		} else if p2.color == "purple" {
+			magnitude = 0.015
+		}
+	case "purple":
+		if p2.color == "red" || p2.color == "green" {
+			magnitude = -0.015
+		} else if p2.color == "yellow" {
+			magnitude = 0.015
+		} else if p2.color == "blue" {
+			magnitude = 0.015
+		} else if p2.color == "purple" {
+			magnitude = 0.02
 		}
 	}
 
-	// Calculate the force using the fast inverse square root method
 	invSqrtDistance := fastInverseSqrt(distance)
 	force := direction.Mul(magnitude * invSqrtDistance * invSqrtDistance)
 

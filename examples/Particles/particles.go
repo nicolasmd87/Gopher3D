@@ -54,9 +54,9 @@ func (pb *ParticleBehaviour) Start() {
 	numParticles := 1350
 	for i := 0; i < numParticles; i++ {
 		position := mgl.Vec3{
-			rand.Float32()*100 - 50, // X: random between -50 and 50
-			rand.Float32()*100 - 50, // Y: random between -50 and 50
-			rand.Float32()*100 - 50, // Z: random between -50 and 50
+			rand.Float32() * 100, // X: random between -50 and 50
+			rand.Float32() * 100, // Y: random between -50 and 50
+			rand.Float32() * 100, // Z: random between -50 and 50
 		}
 		color := randomColor()
 		pb.createParticle(position, color)
@@ -94,11 +94,7 @@ func (pb *ParticleBehaviour) createParticle(position mgl.Vec3, color string) {
 
 	pb.engine.AddModel(m)
 
-	initialVelocity := mgl.Vec3{
-		rand.Float32()*2 - 1, // Random velocity component between -1 and 1
-		rand.Float32()*2 - 1,
-		rand.Float32()*2 - 1,
-	}
+	initialVelocity := mgl.Vec3{0, 0, 0} // Set initial velocity to zero for better observation
 
 	particle := &Particle{
 		position: position,
@@ -120,6 +116,8 @@ func (pb *ParticleBehaviour) UpdateFixed() {
 func UpdateParticles(pb *ParticleBehaviour) {
 	for _, p := range pb.particles {
 		pb.applyForces(p)
+		// Apply damping to the velocity to prevent particles from flying apart
+		p.velocity = p.velocity.Mul(0.99)
 		p.position = p.position.Add(p.velocity)
 		p.model.SetPosition(p.position.X(), p.position.Y(), p.position.Z())
 	}
@@ -164,7 +162,7 @@ func (pb *ParticleBehaviour) calculateForce(p1, p2 *Particle) mgl.Vec3 {
 		} else if p2.color == "red" {
 			magnitude = 0.01
 		} else if p2.color == "purple" {
-			magnitude = -0.015
+			magnitude = 0.015
 		} else if p2.color == "blue" {
 			magnitude = 0.015
 		}
@@ -172,9 +170,9 @@ func (pb *ParticleBehaviour) calculateForce(p1, p2 *Particle) mgl.Vec3 {
 		if p2.color == "red" || p2.color == "green" {
 			magnitude = 0.01
 		} else if p2.color == "yellow" {
-			magnitude = -0.01
+			magnitude = 0.01
 		} else if p2.color == "purple" {
-			magnitude = -0.015
+			magnitude = 0.015
 		} else if p2.color == "blue" {
 			magnitude = 0.015
 		}
@@ -192,7 +190,7 @@ func (pb *ParticleBehaviour) calculateForce(p1, p2 *Particle) mgl.Vec3 {
 		}
 	case "blue":
 		if p2.color == "red" || p2.color == "green" {
-			magnitude = -0.01
+			magnitude = 0.01
 		} else if p2.color == "yellow" {
 			magnitude = 0.01
 		} else if p2.color == "blue" {
@@ -202,7 +200,7 @@ func (pb *ParticleBehaviour) calculateForce(p1, p2 *Particle) mgl.Vec3 {
 		}
 	case "purple":
 		if p2.color == "red" || p2.color == "green" {
-			magnitude = -0.015
+			magnitude = 0.015
 		} else if p2.color == "yellow" {
 			magnitude = 0.015
 		} else if p2.color == "blue" {
@@ -212,8 +210,19 @@ func (pb *ParticleBehaviour) calculateForce(p1, p2 *Particle) mgl.Vec3 {
 		}
 	}
 
-	invSqrtDistance := fastInverseSqrt(distance)
-	force := direction.Mul(magnitude * invSqrtDistance * invSqrtDistance)
+	// Introduce a softening parameter to avoid infinite forces
+	softening := float32(0.1)
+	invSqrtDistance := fastInverseSqrt(distance*distance + softening*softening)
+	forceMagnitude := magnitude * invSqrtDistance * invSqrtDistance
 
+	// Clamp the force to a maximum value to prevent excessive acceleration
+	maxForce := float32(10.0)
+	if forceMagnitude > maxForce {
+		forceMagnitude = maxForce
+	} else if forceMagnitude < -maxForce {
+		forceMagnitude = -maxForce
+	}
+
+	force := direction.Mul(forceMagnitude)
 	return force
 }

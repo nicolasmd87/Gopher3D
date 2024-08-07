@@ -51,7 +51,7 @@ func (pb *ParticleBehaviour) Start() {
 	rand.Seed(time.Now().UnixNano())
 
 	// Create a bunch of particles
-	numParticles := 1350
+	numParticles := 1250
 	for i := 0; i < numParticles; i++ {
 		position := mgl.Vec3{
 			rand.Float32() * 100, // X: random between -50 and 50
@@ -110,7 +110,7 @@ func (pb *ParticleBehaviour) Update() {
 }
 
 func (pb *ParticleBehaviour) UpdateFixed() {
-	// UpdateParticles(pb)
+	//UpdateParticles(pb)
 }
 
 func UpdateParticles(pb *ParticleBehaviour) {

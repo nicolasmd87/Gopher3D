@@ -51,6 +51,10 @@ func (mb *GoCraftBehaviour) Update() {
 
 }
 
+func (mb *GoCraftBehaviour) UpdateFixed() {
+
+}
+
 // May take a while to load, this is until we fix perfomance issues, this is a good benchmark in the meantime
 func createWorld(mb *GoCraftBehaviour) {
 	model, _ := loader.LoadObjectWithPath("../resources/obj/Cube.obj", true)

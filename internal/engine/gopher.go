@@ -38,6 +38,7 @@ type Gopher struct {
 	rendererAPI    renderer.Render
 	window         *glfw.Window
 	Camera         *renderer.Camera
+	frameTrackId   int
 }
 
 func NewGopher(rendererAPI rendAPI) *Gopher {
@@ -57,6 +58,7 @@ func NewGopher(rendererAPI rendAPI) *Gopher {
 		Height:         768,
 		ModelChan:      make(chan *renderer.Model, 1000000),
 		ModelBatchChan: make(chan []*renderer.Model, 1000000),
+		frameTrackId:   0,
 	}
 }
 
@@ -128,6 +130,12 @@ func (gopher *Gopher) RenderLoop() {
 		lastTime = currentTime
 
 		gopher.Camera.ProcessKeyboard(gopher.window, float32(deltaTime))
+
+		//TODO: Rignt now it's fixed but maybe in the future we can make it confgigurable?
+		if gopher.frameTrackId >= 2 {
+			behaviour.GlobalBehaviourManager.UpdateAllFixed()
+			gopher.frameTrackId = 0
+		}
 		behaviour.GlobalBehaviourManager.UpdateAll()
 		gopher.rendererAPI.Render(*gopher.Camera, gopher.Light)
 
@@ -135,18 +143,10 @@ func (gopher *Gopher) RenderLoop() {
 		case *renderer.OpenGLRenderer:
 			gopher.window.SwapBuffers()
 		}
+		gopher.frameTrackId++
 		glfw.PollEvents()
-
-		select {
-		case model := <-gopher.ModelChan:
-			gopher.rendererAPI.AddModel(model)
-		case modelBatch := <-gopher.ModelBatchChan:
-			gopher.AddModelBatch(modelBatch)
-			continue
-		case <-time.After(refreshRate):
-			continue
-		}
 	}
+	gopher.rendererAPI.Cleanup()
 }
 
 func (gopher *Gopher) SetDebugMode(debug bool) {

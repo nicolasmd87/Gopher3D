@@ -53,10 +53,11 @@ func LoadModel(filename string, recalculateNormals bool) (*renderer.Model, error
 	var normals []float32
 	var faces []int32
 	var currentMaterialName string
-	// Initialize model with a default material to ensure it always has one
-	model = &renderer.Model{
-		Material: renderer.DefaultMaterial, // Assign the default material initially
-	}
+	// TODO: I may want to review this later
+	model = &renderer.Model{}
+	model.Material = renderer.DefaultMaterial
+	uniqueMaterial := *model.Material
+	model.Material = &uniqueMaterial
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -160,16 +161,16 @@ func LoadModel(filename string, recalculateNormals bool) (*renderer.Model, error
 
 // LoadMaterials loads material properties from a .mtl file.
 func LoadMaterials(filename string) map[string]*renderer.Material {
+	defaultMaterial := renderer.DefaultMaterial
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
 		logger.Log.Error("Error opening material file: ", zap.Error(err))
-		return map[string]*renderer.Material{}
+		return map[string]*renderer.Material{"default": defaultMaterial}
 	}
 
 	file, err := os.Open(filename)
 	if err != nil {
-		//return the default material
 		logger.Log.Error("Error opening material file: ", zap.Error(err))
-		return map[string]*renderer.Material{}
+		return map[string]*renderer.Material{"default": defaultMaterial}
 	}
 	defer file.Close()
 	var currentMaterial *renderer.Material

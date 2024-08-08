@@ -4,7 +4,8 @@ Note: This is a very early version, right now it's not more than a POC.
 
 ## How to run
 
-go to ./cmd/ and run the gui_manager.go to interact via the precarious test interface
+
+---> DEPRECATING THE UI FOR NOW //go to ./cmd/ and run the gui_manager.go to interact via the precarious test interface 
 
 Look at the examples folder to understand how to interact with the engine, it is very similar to other implementations, you only need to implement a Start and Update function based on a predefined behavior.
 
@@ -19,3 +20,15 @@ OpenGL
 #### WORK IN PROGRESS
 
 Vulkan
+
+
+F.A.Q.
+
+- Does it really work? 
+    - Kind of
+    
+- Do you know what you are doing?
+    - Not really
+
+- Can I jump into the project?
+    - Sure, it's open source

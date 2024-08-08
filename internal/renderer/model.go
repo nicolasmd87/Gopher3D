@@ -26,6 +26,7 @@ var defaultTextureFS embed.FS
 
 type Model struct {
 	Id                   int
+	Name                 string
 	Position             mgl32.Vec3
 	Scale                mgl32.Vec3
 	Rotation             mgl32.Quat

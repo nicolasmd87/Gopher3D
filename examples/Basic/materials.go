@@ -40,6 +40,10 @@ func (mb *GoCraftBehaviour) Update() {
 
 }
 
+func (mb *GoCraftBehaviour) UpdateFixed() {
+
+}
+
 func createWorld(mb *GoCraftBehaviour) {
 	model, _ := loader.LoadObjectWithPath("../resources/obj/f104starfighter.obj", true)
 	mb.SceneModel = model

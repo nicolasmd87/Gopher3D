@@ -14,6 +14,9 @@ import (
 	"go.uber.org/zap"
 )
 
+var currentTextureID uint32 = ^uint32(0) // Initialize with an invalid value
+var frustum Frustum
+
 type OpenGLRenderer struct {
 	FrustumCullingEnabled bool
 	FaceCullingEnabled    bool
@@ -38,6 +41,11 @@ func (rend *OpenGLRenderer) Init(width, height int32, _ *glfw.Window) {
 		logger.Log.Error("OpenGL initialization failed", zap.Error(err))
 		return
 	}
+
+	if rend.Debug {
+		gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
+	}
+
 	rend.FrustumCullingEnabled = false
 	rend.FaceCullingEnabled = false
 	SetDefaultTexture(rend)
@@ -100,24 +108,14 @@ func (rend *OpenGLRenderer) AddModel(model *Model) {
 }
 
 func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
-	var currentTextureID uint32 = ^uint32(0) // Initialize with an invalid value
-	var frustum Frustum
 
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-
-	if rend.Debug {
-		gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
-	} else {
-		// Switch back to solid fill mode
-		gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
-	}
 
 	viewProjection := camera.GetViewProjection()
 	gl.UseProgram(rend.Shader.program)
 	gl.UniformMatrix4fv(rend.viewProjLoc, 1, false, &viewProjection[0])
 
 	if light != nil && light.Mode == "static" && !light.Calculated {
-		// We only calculate it once to save performance
 		rend.calculateLights(light)
 		light.Calculated = true
 	} else if light != nil && !light.Calculated {
@@ -141,7 +139,9 @@ func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
 	if rend.FrustumCullingEnabled {
 		frustum = camera.CalculateFrustum()
 	}
-	for i := 0; i < len(rend.Models); i++ {
+
+	modLen := len(rend.Models)
+	for i := 0; i < modLen; i++ {
 		// Skip rendering if the model is outside the frustum
 		if rend.FrustumCullingEnabled && !frustum.IntersectsSphere(rend.Models[i].BoundingSphereCenter, rend.Models[i].BoundingSphereRadius) {
 			continue

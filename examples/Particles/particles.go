@@ -44,6 +44,8 @@ func (pb *ParticleBehaviour) Start() {
 	pb.engine.Camera.Position = mgl.Vec3{0, 50, 1000}
 	pb.engine.Camera.Speed = 5000
 	pb.engine.Light = renderer.CreateLight()
+	pb.engine.Light.Type = renderer.STATIC_LIGHT
+
 	pb.engine.SetFrustumCulling(false)
 	pb.engine.SetFaceCulling(true)
 
@@ -51,7 +53,7 @@ func (pb *ParticleBehaviour) Start() {
 	rand.Seed(time.Now().UnixNano())
 
 	// Create a bunch of particles
-	numParticles := 1250
+	numParticles := 1500
 	for i := 0; i < numParticles; i++ {
 		position := mgl.Vec3{
 			rand.Float32() * 100, // X: random between -50 and 50

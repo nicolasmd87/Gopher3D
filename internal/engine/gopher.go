@@ -145,17 +145,8 @@ func (gopher *Gopher) RenderLoop() {
 		}
 		gopher.frameTrackId++
 		glfw.PollEvents()
-		select {
-		case model := <-gopher.ModelChan:
-			gopher.rendererAPI.AddModel(model)
-		case modelBatch := <-gopher.ModelBatchChan:
-			gopher.AddModelBatch(modelBatch)
-			continue
-		case <-time.After(refreshRate):
-			continue
-		}
-
 	}
+	gopher.rendererAPI.Cleanup()
 }
 
 func (gopher *Gopher) SetDebugMode(debug bool) {

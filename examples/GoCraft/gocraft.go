@@ -33,11 +33,11 @@ func main() {
 
 	NewGocraftBehaviour(engine)
 
-	engine.Width = 720
-	engine.Height = 480
+	engine.Width = 1024
+	engine.Height = 768
 
 	// WINDOW POS IN X,Y AND MODEL
-	engine.Render(550, 550)
+	engine.Render(600, 200)
 }
 func (mb *GoCraftBehaviour) Start() {
 	mb.engine.Light = renderer.CreateLight()
@@ -58,7 +58,7 @@ func (mb *GoCraftBehaviour) UpdateFixed() {
 // May take a while to load, this is until we fix perfomance issues, this is a good benchmark in the meantime
 func createWorld(mb *GoCraftBehaviour) {
 	model, _ := loader.LoadObjectWithPath("../resources/obj/Cube.obj", true)
-	//model.SetTexture("../resources/textures/Grass.png")
+	model.SetTexture("../resources/textures/Grass.png")
 	// Tweak this params for fun
 	// Warning: When batching is on we can spawn the scene before hand
 	// If the height and width are too big, it will take a while to load

@@ -173,6 +173,7 @@ func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
 		gl.DrawElements(gl.TRIANGLES, int32(len(rend.Models[i].Faces)), gl.UNSIGNED_INT, nil)
 		gl.BindVertexArray(0)
 	}
+	gl.Disable(gl.DEPTH_TEST)
 	// Disable culling after rendering
 	gl.Disable(gl.CULL_FACE)
 }

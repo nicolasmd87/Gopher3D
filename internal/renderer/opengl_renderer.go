@@ -115,11 +115,13 @@ func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
 	gl.UseProgram(rend.Shader.program)
 	gl.UniformMatrix4fv(rend.viewProjLoc, 1, false, &viewProjection[0])
 
-	if light != nil && light.Mode == "static" && !light.Calculated {
-		rend.calculateLights(light)
-		light.Calculated = true
-	} else if light != nil && !light.Calculated {
-		rend.calculateLights(light)
+	if light != nil && !light.Calculated {
+		if light.Mode == "static" {
+			rend.calculateLights(light)
+			light.Calculated = true
+		} else {
+			rend.calculateLights(light)
+		}
 	}
 
 	gl.Enable(gl.DEPTH_TEST)

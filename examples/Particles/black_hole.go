@@ -37,6 +37,16 @@ func NewBlackHoleBehaviour(engine *engine.Gopher) {
 	behaviour.GlobalBehaviourManager.Add(bhb)
 }
 
+func main() {
+	engine := engine.NewGopher(engine.OPENGL) // or engine.VULKAN
+	NewBlackHoleBehaviour(engine)
+
+	engine.Width = 1204
+	engine.Height = 768
+
+	engine.Render(200, 100)
+}
+
 func (bhb *BlackHoleBehaviour) Start() {
 	bhb.engine.Camera.InvertMouse = false
 	bhb.engine.Camera.Position = mgl.Vec3{0, 50, 1000}
@@ -106,7 +116,6 @@ func (bhb *BlackHoleBehaviour) createParticle(position, velocity mgl.Vec3, color
 
 	m.Material.Name = "Particle_" + color
 
-	// Add the model to the engine to render it
 	bhb.engine.AddModel(m)
 
 	return &Particle{
@@ -179,16 +188,4 @@ func (bh *BlackHole) ApplyGravity(p *Particle) {
 
 	// Update the particle's position using Verlet integration
 	p.position = p.position.Add(force)
-}
-
-// Main function to run the program
-func main() {
-	engine := engine.NewGopher(engine.OPENGL) // or engine.VULKAN
-	NewBlackHoleBehaviour(engine)
-
-	engine.Width = 1204
-	engine.Height = 768
-
-	// Start the rendering loop
-	engine.Render(200, 100)
 }

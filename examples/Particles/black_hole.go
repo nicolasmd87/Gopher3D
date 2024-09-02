@@ -13,11 +13,11 @@ import (
 )
 
 type Particle struct {
-	position mgl.Vec3
-	velocity mgl.Vec3
-	color    string
-	model    *renderer.Model
-	active   bool // To check if the particle is still active
+	position    mgl.Vec3
+	previousPos mgl.Vec3
+	color       string
+	model       *renderer.Model
+	active      bool // To check if the particle is still active
 }
 
 type BlackHole struct {
@@ -40,7 +40,7 @@ func NewBlackHoleBehaviour(engine *engine.Gopher) {
 func (bhb *BlackHoleBehaviour) Start() {
 	bhb.engine.Camera.InvertMouse = false
 	bhb.engine.Camera.Position = mgl.Vec3{0, 50, 1000}
-	bhb.engine.Camera.Speed = 5000
+	bhb.engine.Camera.Speed = 900
 	bhb.engine.Light = renderer.CreateLight()
 	bhb.engine.Light.Type = renderer.STATIC_LIGHT
 
@@ -54,8 +54,8 @@ func (bhb *BlackHoleBehaviour) Start() {
 	// Seed the random number generator
 	rand.Seed(time.Now().UnixNano())
 
-	// Create more particles with reduced initial velocities
-	numParticles := 3000
+	// Create a large number of particles with reduced initial velocities
+	numParticles := 9000
 	for i := 0; i < numParticles; i++ {
 		position := mgl.Vec3{
 			rand.Float32()*200 - 100, // X: random between -100 and 100
@@ -110,11 +110,11 @@ func (bhb *BlackHoleBehaviour) createParticle(position, velocity mgl.Vec3, color
 	bhb.engine.AddModel(m)
 
 	return &Particle{
-		position: position,
-		velocity: velocity,
-		color:    color,
-		model:    m,
-		active:   true, // Mark particle as active
+		position:    position,
+		previousPos: position.Sub(velocity), // Initialize previous position for Verlet integration
+		color:       color,
+		model:       m,
+		active:      true, // Mark particle as active
 	}
 }
 
@@ -137,8 +137,11 @@ func (bhb *BlackHoleBehaviour) Update() {
 			}
 			bh.ApplyGravity(p)
 		}
-		// Update the particle's position based on its velocity
-		p.position = p.position.Add(p.velocity)
+		// Update the particle's position using Verlet integration
+		newPosition := p.position.Mul(2).Sub(p.previousPos)
+		p.previousPos = p.position
+		p.position = newPosition
+
 		p.model.SetPosition(p.position.X(), p.position.Y(), p.position.Z())
 	}
 }
@@ -174,7 +177,8 @@ func (bh *BlackHole) ApplyGravity(p *Particle) {
 		force = force.Normalize().Mul(maxForce)
 	}
 
-	p.velocity = p.velocity.Add(force)
+	// Update the particle's position using Verlet integration
+	p.position = p.position.Add(force)
 }
 
 // Main function to run the program
@@ -182,9 +186,9 @@ func main() {
 	engine := engine.NewGopher(engine.OPENGL) // or engine.VULKAN
 	NewBlackHoleBehaviour(engine)
 
-	engine.Width = 1024
+	engine.Width = 1204
 	engine.Height = 768
 
 	// Start the rendering loop
-	engine.Render(600, 200)
+	engine.Render(200, 100)
 }

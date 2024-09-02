@@ -107,9 +107,20 @@ func (rend *OpenGLRenderer) AddModel(model *Model) {
 	rend.Models = append(rend.Models, model)
 }
 
+func (rend *OpenGLRenderer) RemoveModel(model *Model) {
+	// remove model from the list of models
+	for i, m := range rend.Models {
+		if m == model {
+			rend.Models = append(rend.Models[:i], rend.Models[i+1:]...)
+			break
+		}
+	}
+}
+
 func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
 
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+	gl.Enable(gl.DEPTH_TEST)
 
 	viewProjection := camera.GetViewProjection()
 	gl.UseProgram(rend.Shader.program)
@@ -124,8 +135,6 @@ func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
 		}
 	}
 
-	gl.Enable(gl.DEPTH_TEST)
-
 	// Culling : https://learnopengl.com/Advanced-OpenGL/Face-culling
 	if rend.FaceCullingEnabled {
 		gl.Enable(gl.CULL_FACE)
@@ -136,7 +145,6 @@ func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
 	}
 
 	// Calculate frustum
-
 	// TODO: Add check to see if camera is dirty(moved)
 	if rend.FrustumCullingEnabled {
 		frustum = camera.CalculateFrustum()
@@ -176,7 +184,6 @@ func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
 		gl.BindVertexArray(0)
 	}
 	gl.Disable(gl.DEPTH_TEST)
-	// Disable culling after rendering
 	gl.Disable(gl.CULL_FACE)
 }
 

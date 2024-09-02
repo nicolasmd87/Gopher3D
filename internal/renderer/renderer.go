@@ -27,6 +27,7 @@ type Render interface {
 	Init(width, height int32, window *glfw.Window)
 	Render(camera Camera, light *Light)
 	AddModel(model *Model)
+	RemoveModel(model *Model)
 	LoadTexture(path string) (uint32, error)
 	CreateTextureFromImage(img image.Image) (uint32, error)
 	Cleanup()

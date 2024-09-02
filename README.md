@@ -11,6 +11,9 @@ Look at the examples folder to understand how to interact with the engine, it is
 
 ![Mars](https://github.com/nicolasmd87/Gopher3D/assets/8224408/09d2a39b-c1cb-4548-87fb-1a877df24453)
 
+
+![image](https://github.com/user-attachments/assets/5fa3e508-0a63-4420-b4a7-1cfb675cfaf7)
+
 ## Render APIs
 
 #### IMPLEMENTED

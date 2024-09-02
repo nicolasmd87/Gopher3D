@@ -130,7 +130,9 @@ func (bhb *BlackHoleBehaviour) Update() {
 		}
 		for _, bh := range bhb.blackHoles {
 			if bh.isWithinEventHorizon(p) {
-				p.active = false // Deactivate the particle once it hits the event horizon
+				// Remove the particle model from the engine to simulate disappearance
+				bhb.engine.RemoveModel(p.model)
+				p.active = false // Deactivate the particle
 				continue
 			}
 			bh.ApplyGravity(p)

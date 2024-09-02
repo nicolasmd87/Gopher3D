@@ -185,6 +185,10 @@ func (gopher *Gopher) AddModel(model *renderer.Model) {
 	gopher.rendererAPI.AddModel(model)
 }
 
+func (gopher *Gopher) RemoveModel(model *renderer.Model) {
+	gopher.rendererAPI.RemoveModel(model)
+}
+
 // TODO: Fix ?? Probably an issue with pointers
 func (gopher *Gopher) AddModelBatch(models []*renderer.Model) {
 	for _, model := range models {

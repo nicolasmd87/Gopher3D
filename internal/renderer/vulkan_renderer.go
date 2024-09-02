@@ -173,6 +173,9 @@ func (rend *VulkanRenderer) AddModel(model *Model) {
 	// Add model to the scene's model list
 	rend.VulkanApp.Scene.models = append(rend.VulkanApp.Scene.models, model)
 }
+func (rend *VulkanRenderer) RemoveModel(model *Model) {
+
+}
 
 func (rend *VulkanRenderer) LoadTexture(path string) (uint32, error) {
 	if texture, exists := rend.textures[path]; exists {

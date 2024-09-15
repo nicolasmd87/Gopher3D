@@ -310,10 +310,10 @@ func CalculateModelMatrix(model Model) mgl32.Mat4 {
 	// Start with an identity matrix
 	modelMatrix := mgl32.Ident4()
 
-	// Apply scale, rotation, and translation
+	// Apply scaling, rotation, and translation in sequence without extra matrix allocations
 	modelMatrix = modelMatrix.Mul4(mgl32.Scale3D(model.Scale.X(), model.Scale.Y(), model.Scale.Z()))
-	modelMatrix = modelMatrix.Mul4(mgl32.Translate3D(model.Position.X(), model.Position.Y(), model.Position.Z()))
 	modelMatrix = modelMatrix.Mul4(model.Rotation.Mat4())
+	modelMatrix = modelMatrix.Mul4(mgl32.Translate3D(model.Position.X(), model.Position.Y(), model.Position.Z()))
 
 	return modelMatrix
 }

@@ -98,7 +98,7 @@ func (bhb *BlackHoleBehaviour) Start() {
 	rand.Seed(time.Now().UnixNano())
 
 	// Create a large number of particles
-	numParticles := 9000
+	numParticles := 16000
 	for i := 0; i < numParticles; i++ {
 		position := mgl.Vec3{
 			rand.Float32()*200 - 100, // X: random between -100 and 100

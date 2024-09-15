@@ -125,7 +125,7 @@ func (rend *VulkanRenderer) Init(width, height int32, window *glfw.Window) {
 	logger.Log.Info("Swapchain Initialized", zap.Any("Swapchain dimensions:", dim))
 
 	rend.platform = platform
-	rend.VulkanApp.Scene.Debug = rend.Debug
+	rend.VulkanApp.Scene.Debug = Debug
 	logger.Log.Info("Vulkan framework initialized.")
 }
 
@@ -203,7 +203,7 @@ func (rend *VulkanRenderer) Cleanup() {
 }
 
 func (rend *VulkanRenderer) SetDebugMode(debug bool) {
-	rend.Debug = debug
+	Debug = debug
 }
 
 func (rend *VulkanRenderer) SetFrustumCulling(enabled bool) {
@@ -211,7 +211,7 @@ func (rend *VulkanRenderer) SetFrustumCulling(enabled bool) {
 }
 
 func (rend *VulkanRenderer) SetFaceCulling(enabled bool) {
-	rend.FaceCullingEnabled = enabled
+	FaceCullingEnabled = enabled
 }
 
 // TODO: Mouse movement is not working for some reason, check vectors up, down , etc

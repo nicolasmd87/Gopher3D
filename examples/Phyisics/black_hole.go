@@ -5,8 +5,11 @@ import (
 	loader "Gopher3D/internal/Loader"
 	"Gopher3D/internal/engine"
 	"Gopher3D/internal/renderer"
+	"log"
 	"math"
 	"math/rand"
+	"os"
+	"runtime/pprof"
 	"time"
 
 	"github.com/g3n/engine/experimental/physics"
@@ -43,6 +46,22 @@ func NewBlackHoleBehaviour(engine *engine.Gopher) {
 }
 
 func main() {
+
+	// Profiling
+	// ========================================
+	f, err := os.Create("cpu.prof")
+	if err != nil {
+		log.Fatal("could not create CPU profile: ", err)
+	}
+	defer f.Close()
+
+	if err := pprof.StartCPUProfile(f); err != nil {
+		log.Fatal("could not start CPU profile: ", err)
+	}
+	defer pprof.StopCPUProfile()
+
+	// ========================================
+
 	engine := engine.NewGopher(engine.OPENGL) // or engine.VULKAN
 	NewBlackHoleBehaviour(engine)
 
@@ -58,6 +77,7 @@ func (bhb *BlackHoleBehaviour) Start() {
 	bhb.engine.Camera.Speed = 900
 	bhb.engine.Light = renderer.CreateLight()
 	bhb.engine.Light.Type = renderer.STATIC_LIGHT
+	bhb.engine.SetFaceCulling(true)
 
 	// Create and add a black hole to the scene
 	bhPosition := mgl.Vec3{0, 0, 0} // Position of the black hole at the origin
@@ -146,7 +166,6 @@ func randomColor() string {
 }
 
 func (bhb *BlackHoleBehaviour) Update() {
-	bhb.simulation.Step(1.0 / 60.0) // Simulate at 60 frames per second
 	for _, p := range bhb.particles {
 		if !p.active {
 			continue

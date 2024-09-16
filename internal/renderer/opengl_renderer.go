@@ -115,10 +115,8 @@ func (rend *OpenGLRenderer) RemoveModel(model *Model) {
 }
 
 func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
-
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	gl.Enable(gl.DEPTH_TEST)
-
 	viewProjection := camera.GetViewProjection()
 	gl.UseProgram(rend.Shader.program)
 	gl.UniformMatrix4fv(rend.viewProjLoc, 1, false, &viewProjection[0])

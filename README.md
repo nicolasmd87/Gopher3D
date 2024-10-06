@@ -13,7 +13,6 @@ The engine is still in very early stages
 - **Camera Controls**: Integrated camera controls with support for mouse and keyboard input.
 - **Basic Lighting**: Currently includes basic light setup (static light sources).
 - **Examples**: Various examples (particles, black hole, basic rendering) are included to showcase how the engine can be used.
-- **Vulkan (In Progress)**: A Vulkan renderer has been started, but it’s not yet functional. Future updates will continue this work.
 
 ## Not Implemented
 

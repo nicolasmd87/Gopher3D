@@ -151,19 +151,13 @@ func (gopher *Gopher) RenderLoop() {
 
 // TODO: Get rid of this, and use a renderer global variable
 func (gopher *Gopher) SetDebugMode(debug bool) {
-	switch renderer := gopher.rendererAPI.(type) {
-	case *renderer.OpenGLRenderer:
-		renderer.Debug = debug
-	case *renderer.VulkanRenderer:
-		renderer.Debug = debug
-	default:
-		logger.Log.Error("Unknown renderer type")
-	}
+	renderer.Debug = debug
 }
 
 func (gopher *Gopher) SetFrustumCulling(enabled bool) {
 	renderer.FrustumCullingEnabled = enabled
 }
+
 func (gopher *Gopher) SetFaceCulling(enabled bool) {
 	renderer.FaceCullingEnabled = enabled
 }

@@ -19,7 +19,10 @@ var currentTextureID uint32 = ^uint32(0) // Initialize with an invalid value
 var frustum Frustum
 
 type OpenGLRenderer struct {
+<<<<<<< HEAD
 	Debug                bool
+=======
+>>>>>>> origin/main
 	modelLoc             int32
 	viewProjLoc          int32
 	lightPosLoc          int32
@@ -33,8 +36,11 @@ type OpenGLRenderer struct {
 	fragmentShader       uint32
 	Shader               Shader
 	Models               []*Model
+<<<<<<< HEAD
 	instanceVBO          uint32 // Buffer for instance model matrices
 
+=======
+>>>>>>> origin/main
 }
 
 func (rend *OpenGLRenderer) Init(width, height int32, _ *glfw.Window) {
@@ -43,12 +49,17 @@ func (rend *OpenGLRenderer) Init(width, height int32, _ *glfw.Window) {
 		return
 	}
 
-	if rend.Debug {
+	if Debug {
 		gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 	}
 	// Generate buffer for instanced data (like model matrices)
 	gl.GenBuffers(1, &rend.instanceVBO)
 
+<<<<<<< HEAD
+=======
+	FrustumCullingEnabled = false
+	FaceCullingEnabled = false
+>>>>>>> origin/main
 	SetDefaultTexture(rend)
 	gl.Viewport(0, 0, width, height)
 	rend.Shader = InitShader()
@@ -132,10 +143,8 @@ func (rend *OpenGLRenderer) RemoveModel(model *Model) {
 }
 
 func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
-
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	gl.Enable(gl.DEPTH_TEST)
-
 	viewProjection := camera.GetViewProjection()
 	gl.UseProgram(rend.Shader.program)
 	gl.UniformMatrix4fv(rend.viewProjLoc, 1, false, &viewProjection[0])
@@ -337,10 +346,10 @@ func CalculateModelMatrix(model Model) mgl32.Mat4 {
 	// Start with an identity matrix
 	modelMatrix := mgl32.Ident4()
 
-	// Apply scale, rotation, and translation
+	// Apply scaling, rotation, and translation in sequence without extra matrix allocations
 	modelMatrix = modelMatrix.Mul4(mgl32.Scale3D(model.Scale.X(), model.Scale.Y(), model.Scale.Z()))
-	modelMatrix = modelMatrix.Mul4(mgl32.Translate3D(model.Position.X(), model.Position.Y(), model.Position.Z()))
 	modelMatrix = modelMatrix.Mul4(model.Rotation.Mat4())
+	modelMatrix = modelMatrix.Mul4(mgl32.Translate3D(model.Position.X(), model.Position.Y(), model.Position.Z()))
 
 	return modelMatrix
 }

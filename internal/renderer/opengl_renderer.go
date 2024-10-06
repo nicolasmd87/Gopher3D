@@ -132,6 +132,16 @@ func (rend *OpenGLRenderer) RemoveModel(model *Model) {
 	}
 }
 
+func (model *Model) RemoveModelInstance(index int) {
+	if index >= len(model.InstanceModelMatrices) {
+		return // Index out of range
+	}
+
+	// Mark instance as inactive by removing its matrix
+	model.InstanceModelMatrices = append(model.InstanceModelMatrices[:index], model.InstanceModelMatrices[index+1:]...)
+	model.InstanceCount-- // Reduce instance count
+}
+
 func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	gl.Enable(gl.DEPTH_TEST)

@@ -43,10 +43,12 @@ type BlackHole struct {
 }
 
 type BlackHoleBehaviour struct {
-	blackHoles []*BlackHole
-	particles  []*Particle
-	model      *renderer.Model
-	engine     *engine.Gopher
+	blackHoles    []*BlackHole
+	redParticles  []*Particle
+	blueParticles []*Particle
+	redModel      *renderer.Model
+	blueModel     *renderer.Model
+	engine        *engine.Gopher
 }
 
 func NewBlackHoleBehaviour(engine *engine.Gopher) {
@@ -81,48 +83,73 @@ func (bhb *BlackHoleBehaviour) Start() {
 	blackHole := &BlackHole{position: bhPosition, mass: bhMass, radius: bhRadius}
 	bhb.blackHoles = append(bhb.blackHoles, blackHole)
 
-	// Load the particle model with instancing enabled
-	model, err := loader.LoadObjectInstance("../resources/obj/Sphere_Low.obj", true, 1000000) // 1000 instances
+	// Num of instances for each color
+	numRedInstances := 90000
+	numBlueInstances := 90000
+
+	// Load the red particle model with instancing enabled
+	redModel, err := loader.LoadObjectInstance("../resources/obj/Sphere_Low.obj", true, numRedInstances)
 	if err != nil {
 		panic(err)
 	}
-	model.Scale = mgl.Vec3{5, 5, 5}
-	bhb.model = model
-	bhb.engine.AddModel(model)
+	redModel.Scale = mgl.Vec3{5, 5, 5}
+	redModel.SetDiffuseColor(255.0, 0.0, 0.0) // Red
+	bhb.redModel = redModel
+	bhb.engine.AddModel(redModel)
+
+	// Load the blue particle model with instancing enabled
+	blueModel, err := loader.LoadObjectInstance("../resources/obj/Sphere_Low.obj", true, numBlueInstances)
+	if err != nil {
+		panic(err)
+	}
+	blueModel.Scale = mgl.Vec3{5, 5, 5}
+	blueModel.SetDiffuseColor(0.0, 0.0, 255.0) // Blue
+	bhb.blueModel = blueModel
+	bhb.engine.AddModel(blueModel)
 
 	// Seed the random number generator
 	rand.Seed(time.Now().UnixNano())
 
-	// Initialize particles
-	for i := 0; i < 1000000; i++ {
+	// Initialize red particles
+	for i := 0; i < numRedInstances; i++ {
 		position := mgl.Vec3{
-			rand.Float32()*200 - 100,
-			rand.Float32()*200 - 100,
-			rand.Float32()*200 - 100,
+			rand.Float32()*500 - 100,
+			rand.Float32()*500 - 100,
+			rand.Float32()*500 - 100,
 		}
 
 		velocity := bhb.calculateTangentialVelocity(position, blackHole)
-		color := randomColor()
 
 		particle := &Particle{
 			position:    position,
 			previousPos: position.Sub(velocity), // Initialize previous position for Verlet integration
-			color:       color,
+			color:       "red",
 			active:      true,
 		}
 
-		bhb.particles = append(bhb.particles, particle)
+		bhb.redParticles = append(bhb.redParticles, particle)
+		bhb.redModel.SetInstancePosition(i, position)
+	}
 
-		// Update the instance position in the model (no need to worry about instancing)
-		bhb.model.SetInstancePosition(i, position)
-
-		// Set the color for the particle
-		switch color {
-		case "red":
-			bhb.model.SetDiffuseColor(255.0, 0.0, 0.0)
-		case "blue":
-			bhb.model.SetDiffuseColor(0.0, 0.0, 255.0)
+	// Initialize blue particles
+	for i := 0; i < numBlueInstances; i++ {
+		position := mgl.Vec3{
+			rand.Float32()*500 - 100,
+			rand.Float32()*500 - 100,
+			rand.Float32()*500 - 100,
 		}
+
+		velocity := bhb.calculateTangentialVelocity(position, blackHole)
+
+		particle := &Particle{
+			position:    position,
+			previousPos: position.Sub(velocity), // Initialize previous position for Verlet integration
+			color:       "blue",
+			active:      true,
+		}
+
+		bhb.blueParticles = append(bhb.blueParticles, particle)
+		bhb.blueModel.SetInstancePosition(i, position)
 	}
 }
 
@@ -141,37 +168,70 @@ func (bhb *BlackHoleBehaviour) calculateTangentialVelocity(position mgl.Vec3, bl
 	return tangential.Mul(speed * 0.01)
 }
 
-func randomColor() string {
-	colors := []string{"red", "blue"}
-	return colors[rand.Intn(len(colors))]
-}
-
 func (bhb *BlackHoleBehaviour) Update() {
-	for i, p := range bhb.particles {
+	// Update red particles
+	for i := len(bhb.redParticles) - 1; i >= 0; i-- { // Iterate backwards for safe removal
+		p := bhb.redParticles[i]
 		if !p.active {
 			continue
 		}
 
 		for _, bh := range bhb.blackHoles {
 			if bh.isWithinEventHorizon(p) {
-				p.active = false // Deactivate particle
+				// Deactivate the particle and remove its instance
+				p.active = false
+				bhb.redModel.RemoveModelInstance(i) // Remove instance from the instanced model
+
+				// Remove particle from the list
+				bhb.redParticles = append(bhb.redParticles[:i], bhb.redParticles[i+1:]...)
 				continue
 			}
 
 			bh.ApplyGravity(p)
 		}
 
-		// Update the particle position using Verlet integration
+		// Update particle position using Verlet integration
 		newPosition := p.position.Mul(2).Sub(p.previousPos)
 		p.previousPos = p.position
 		p.position = newPosition
 
 		// Update the instance position in the renderer
-		bhb.model.SetInstancePosition(i, p.position)
+		bhb.redModel.SetInstancePosition(i, p.position)
+	}
+
+	// Update blue particles
+	for i := len(bhb.blueParticles) - 1; i >= 0; i-- { // Iterate backwards for safe removal
+		p := bhb.blueParticles[i]
+		if !p.active {
+			continue
+		}
+
+		for _, bh := range bhb.blackHoles {
+			if bh.isWithinEventHorizon(p) {
+				// Deactivate the particle and remove its instance
+				p.active = false
+				bhb.blueModel.RemoveModelInstance(i) // Remove instance from the instanced model
+
+				// Remove particle from the list
+				bhb.blueParticles = append(bhb.blueParticles[:i], bhb.blueParticles[i+1:]...)
+				continue
+			}
+
+			bh.ApplyGravity(p)
+		}
+
+		// Update particle position using Verlet integration
+		newPosition := p.position.Mul(2).Sub(p.previousPos)
+		p.previousPos = p.position
+		p.position = newPosition
+
+		// Update the instance position in the renderer
+		bhb.blueModel.SetInstancePosition(i, p.position)
 	}
 }
 
 func (bhb *BlackHoleBehaviour) UpdateFixed() {
+	// No fixed update required for this example
 }
 
 func (bh *BlackHole) isWithinEventHorizon(p *Particle) bool {

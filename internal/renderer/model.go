@@ -144,6 +144,17 @@ func (m *Model) updateModelMatrix() {
 	}
 }
 
+// CalculateModelMatrix calculates the transformation matrix for a model
+func (m *Model) calculateModelMatrix() {
+	// Start with an identity matrix
+	m.ModelMatrix = mgl32.Ident4()
+
+	// Apply scaling, rotation, and translation in sequence without extra matrix allocations
+	m.ModelMatrix = m.ModelMatrix.Mul4(mgl32.Scale3D(m.Scale.X(), m.Scale.Y(), m.Scale.Z()))
+	m.ModelMatrix = m.ModelMatrix.Mul4(m.Rotation.Mat4())
+	m.ModelMatrix = m.ModelMatrix.Mul4(mgl32.Translate3D(m.Position.X(), m.Position.Y(), m.Position.Z()))
+}
+
 // Aux functions, maybe I need to move them to another package
 func ApplyModelTransformation(vertex, position, scale mgl32.Vec3, rotation mgl32.Quat) mgl32.Vec3 {
 	// Apply scaling

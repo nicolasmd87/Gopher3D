@@ -173,7 +173,7 @@ func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
 
 		if rend.Models[i].IsDirty {
 			// Recalculate the model matrix only if necessary
-			rend.Models[i].ModelMatrix = CalculateModelMatrix(*rend.Models[i])
+			rend.Models[i].calculateModelMatrix()
 			rend.Models[i].IsDirty = false
 		}
 		// Upload the model matrix to the GPU
@@ -331,19 +331,6 @@ func genShaderProgram(vertexShader, fragmentShader uint32) uint32 {
 	return program
 }
 
-// CalculateModelMatrix calculates the transformation matrix for a model
-func CalculateModelMatrix(model Model) mgl32.Mat4 {
-	// Start with an identity matrix
-	modelMatrix := mgl32.Ident4()
-
-	// Apply scaling, rotation, and translation in sequence without extra matrix allocations
-	modelMatrix = modelMatrix.Mul4(mgl32.Scale3D(model.Scale.X(), model.Scale.Y(), model.Scale.Z()))
-	modelMatrix = modelMatrix.Mul4(model.Rotation.Mat4())
-	modelMatrix = modelMatrix.Mul4(mgl32.Translate3D(model.Position.X(), model.Position.Y(), model.Position.Z()))
-
-	return modelMatrix
-}
-
 func CreateLight() *Light {
 	return &Light{
 		Position:  mgl32.Vec3{0.0, 1500.0, 0.0}, // Example position
@@ -352,15 +339,9 @@ func CreateLight() *Light {
 	}
 }
 
-func (rend *OpenGLRenderer) UpdateInstanceData(instanceModelMatrices []mgl32.Mat4) {
-
-	// Update the instance VBO with new data
-	gl.BindBuffer(gl.ARRAY_BUFFER, rend.instanceVBO)
-	gl.BufferData(gl.ARRAY_BUFFER, len(instanceModelMatrices)*int(unsafe.Sizeof(mgl32.Mat4{})), gl.Ptr(instanceModelMatrices), gl.DYNAMIC_DRAW)
-}
-
 func (rend *OpenGLRenderer) UpdateInstanceMatrices(model *Model) {
 	if len(model.InstanceModelMatrices) > 0 {
-		rend.UpdateInstanceData(model.InstanceModelMatrices) // Ensure this function correctly updates the VBO
+		gl.BindBuffer(gl.ARRAY_BUFFER, rend.instanceVBO)
+		gl.BufferData(gl.ARRAY_BUFFER, len(model.InstanceModelMatrices)*int(unsafe.Sizeof(mgl32.Mat4{})), gl.Ptr(model.InstanceModelMatrices), gl.DYNAMIC_DRAW)
 	}
 }

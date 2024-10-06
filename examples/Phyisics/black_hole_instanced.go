@@ -60,18 +60,18 @@ func main() {
 	engine := engine.NewGopher(engine.OPENGL)
 	NewBlackHoleBehaviour(engine)
 
-	engine.Width = 1204
-	engine.Height = 768
+	engine.Width = 1980
+	engine.Height = 1080
 
-	engine.Render(200, 100)
+	engine.Render(0, 0)
 }
 
 func (bhb *BlackHoleBehaviour) Start() {
-	startCPUProfile()
-	defer stopCPUProfile()
+	//startCPUProfile()
+	//defer stopCPUProfile()
 
 	bhb.engine.Camera.InvertMouse = false
-	bhb.engine.Camera.Position = mgl.Vec3{0, 50, 1000}
+	bhb.engine.Camera.Position = mgl.Vec3{200, 150, 1000}
 	bhb.engine.Camera.Speed = 900
 	bhb.engine.Light = renderer.CreateLight()
 	bhb.engine.Light.Type = renderer.STATIC_LIGHT
@@ -84,7 +84,7 @@ func (bhb *BlackHoleBehaviour) Start() {
 	bhb.blackHoles = append(bhb.blackHoles, blackHole)
 
 	// Num of instances for each color
-	instances := 100000
+	instances := 200000
 
 	// Load the red particle model with instancing enabled
 	redModel, err := loader.LoadObjectInstance("../resources/obj/Sphere_Low.obj", true, instances)

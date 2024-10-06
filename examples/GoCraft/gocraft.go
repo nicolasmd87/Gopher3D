@@ -1,6 +1,5 @@
 package main
 
-// This is a basic example of how to setup the engine and behaviour packages
 import (
 	behaviour "Gopher3D/internal/Behaviour"
 	loader "Gopher3D/internal/Loader"
@@ -10,10 +9,10 @@ import (
 	"time"
 
 	perlin "github.com/aquilax/go-perlin" // Example Perlin noise library
+	"github.com/go-gl/mathgl/mgl32"
 )
 
 var p = perlin.NewPerlin(2, 2, 3, rand.New(rand.NewSource(time.Now().UnixNano())).Int63())
-var modelBatch []*renderer.Model
 
 type GoCraftBehaviour struct {
 	engine          *engine.Gopher
@@ -21,13 +20,14 @@ type GoCraftBehaviour struct {
 	worldHeight     int
 	worldWidth      int
 	noiseDistortion float64
-	batchModels     bool
+	cubeModel       *renderer.Model // Instanced model
 }
 
 func NewGocraftBehaviour(engine *engine.Gopher) {
 	gocraftBehaviour := &GoCraftBehaviour{engine: engine, name: "GoCraft"}
 	behaviour.GlobalBehaviourManager.Add(gocraftBehaviour)
 }
+
 func main() {
 	engine := engine.NewGopher(engine.OPENGL) // or engine.VULKAN
 
@@ -39,73 +39,64 @@ func main() {
 	// WINDOW POS IN X,Y AND MODEL
 	engine.Render(600, 200)
 }
+
 func (mb *GoCraftBehaviour) Start() {
 	mb.engine.Light = renderer.CreateLight()
-	//Static light for some extra FPS
 	mb.engine.Light.Type = renderer.STATIC_LIGHT
-	//mb.engine.SetDebugMode(true)
+	mb.engine.Camera.InvertMouse = false
+	mb.engine.Camera.Position = mgl32.Vec3{500, 50, 500}
+	mb.engine.Camera.Speed = 200
+
+	// Adjust world size and noise
+	mb.worldHeight = 1500
+	mb.worldWidth = 1500
+	mb.noiseDistortion = 22
+
+	// Enable face culling for performance
+	mb.engine.SetFaceCulling(true)
+
+	// Load the cube model with instancing enabled
+	model, err := loader.LoadObjectInstance("../resources/obj/Cube.obj", true, mb.worldHeight*mb.worldWidth)
+	if err != nil {
+		panic(err)
+	}
+	model.SetTexture("../resources/textures/Grass.png")
+	model.Scale = mgl32.Vec3{1, 1, 1}
+	mb.cubeModel = model
+
+	// Add the model to the engine
+	mb.engine.AddModel(model)
+
+	// Create the world using instancing
 	createWorld(mb)
 }
 
 func (mb *GoCraftBehaviour) Update() {
-
+	// Update logic for the world (if needed)
 }
 
 func (mb *GoCraftBehaviour) UpdateFixed() {
-
+	// No fixed update required for this example
 }
 
-// May take a while to load, this is until we fix perfomance issues, this is a good benchmark in the meantime
+// Create the world using instanced rendering with spacing to prevent overlap
 func createWorld(mb *GoCraftBehaviour) {
-	model, _ := loader.LoadObjectWithPath("../resources/obj/Cube.obj", true)
-	model.SetTexture("../resources/textures/Grass.png")
-	// Tweak this params for fun
-	// Warning: When batching is on we can spawn the scene before hand
-	// If the height and width are too big, it will take a while to load
-	mb.worldHeight = 500
-	mb.worldWidth = 500
-	mb.noiseDistortion = 10
-	// Camera frustum culling and face culling for some extra FPS
-	mb.engine.SetFrustumCulling(true)
-	mb.engine.SetFaceCulling(true)
-
-	// OpenGL and Vulkan use different coordinate systems
-	mb.engine.Camera.InvertMouse = false
-
-	InitScene(mb, model)
-}
-
-func InitScene(mb *GoCraftBehaviour, model *renderer.Model) {
-	if mb.batchModels {
-		go func() {
-			var index int
-			for x := 0; x < mb.worldHeight; x++ {
-				for z := 0; z < mb.worldWidth; z++ {
-					spawnBlock(mb, *model, x, z, index)
-					index++
-				}
-			}
-			mb.engine.ModelBatchChan <- modelBatch
-		}()
-		return
-	}
+	var index int
+	spacing := 2.0 // Adjust this value to add more spacing between cubes
 	for x := 0; x < mb.worldHeight; x++ {
 		for z := 0; z < mb.worldWidth; z++ {
-			spawnBlock(mb, *model, x, z, 0)
+			// Generate noise for the Y-axis (height)
+			y := p.Noise2D(float64(x)*0.1, float64(z)*0.1)
+			y = scaleNoise(mb, y)
+
+			// Set the instance position for each cube with spacing applied
+			mb.cubeModel.SetInstancePosition(index, mgl32.Vec3{float32(x) * float32(spacing), float32(y), float32(z) * float32(spacing)})
+			index++
 		}
 	}
 
-}
-
-func spawnBlock(mb *GoCraftBehaviour, model renderer.Model, x, z, index int) {
-	y := p.Noise2D(float64(x)*0.1, float64(z)*0.1)
-	y = scaleNoise(mb, y)
-	model.SetPosition(float32(x), float32(y), float32(z))
-	if mb.batchModels {
-		modelBatch[index] = &model
-		return
-	}
-	mb.engine.AddModel(&model)
+	// Update the instance count in the model
+	mb.cubeModel.InstanceCount = mb.worldHeight * mb.worldWidth
 }
 
 func scaleNoise(mb *GoCraftBehaviour, noiseVal float64) float64 {

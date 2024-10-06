@@ -149,6 +149,7 @@ func (gopher *Gopher) RenderLoop() {
 	gopher.rendererAPI.Cleanup()
 }
 
+// TODO: Get rid of this, and use a renderer global variable
 func (gopher *Gopher) SetDebugMode(debug bool) {
 	renderer.Debug = debug
 }
@@ -198,4 +199,5 @@ func (gopher *Gopher) mouseCallback(w *glfw.Window, xpos, ypos float64) {
 	} else {
 		firstMouse = true
 	}
+
 }

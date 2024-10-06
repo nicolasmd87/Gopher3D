@@ -25,30 +25,33 @@ var DefaultMaterial = &Material{
 var defaultTextureFS embed.FS
 
 type Model struct {
-	Id                   int
-	Name                 string
-	Position             mgl32.Vec3
-	Scale                mgl32.Vec3
-	Rotation             mgl32.Quat
-	Vertices             []float32
-	Indices              []uint32
-	vertexBuffer         vk.Buffer
-	vertexMemory         vk.DeviceMemory
-	indexBuffer          vk.Buffer
-	indexMemory          vk.DeviceMemory
-	Normals              []float32
-	Faces                []int32
-	TextureCoords        []float32
-	InterleavedData      []float32
-	Material             *Material
-	VAO                  uint32 // Vertex Array Object
-	VBO                  uint32 // Vertex Buffer Object
-	EBO                  uint32 // Element Buffer Object
-	ModelMatrix          mgl32.Mat4
-	BoundingSphereCenter mgl32.Vec3
-	BoundingSphereRadius float32
-	IsDirty              bool
-	IsBatched            bool
+	Id                    int
+	Name                  string
+	Position              mgl32.Vec3
+	Scale                 mgl32.Vec3
+	Rotation              mgl32.Quat
+	Vertices              []float32
+	Indices               []uint32
+	vertexBuffer          vk.Buffer
+	vertexMemory          vk.DeviceMemory
+	indexBuffer           vk.Buffer
+	indexMemory           vk.DeviceMemory
+	Normals               []float32
+	Faces                 []int32
+	TextureCoords         []float32
+	InterleavedData       []float32
+	Material              *Material
+	VAO                   uint32 // Vertex Array Object
+	VBO                   uint32 // Vertex Buffer Object
+	EBO                   uint32 // Element Buffer Object
+	ModelMatrix           mgl32.Mat4
+	BoundingSphereCenter  mgl32.Vec3
+	BoundingSphereRadius  float32
+	IsDirty               bool
+	IsBatched             bool
+	IsInstanced           bool
+	InstanceCount         int
+	InstanceModelMatrices []mgl32.Mat4 // Instance model matrices
 }
 
 type Material struct {
@@ -86,7 +89,6 @@ func (m *Model) Rotate(angleX, angleY, angleZ float32) {
 // SetPosition sets the position of the model
 func (m *Model) SetPosition(x, y, z float32) {
 	m.Position = mgl32.Vec3{x, y, z}
-	m.CalculateBoundingSphere()
 	m.updateModelMatrix()
 	m.IsDirty = true
 }
@@ -119,6 +121,7 @@ func (m *Model) CalculateBoundingSphere() {
 	m.BoundingSphereCenter = center
 	m.BoundingSphereRadius = float32(math.Sqrt(float64(maxDistanceSq)))
 }
+
 func (m *Model) updateModelMatrix() {
 	// Matrix multiplication order: scale -> rotate -> translate
 	scaleMatrix := mgl32.Scale3D(m.Scale[0], m.Scale[1], m.Scale[2])
@@ -126,7 +129,29 @@ func (m *Model) updateModelMatrix() {
 	translationMatrix := mgl32.Translate3D(m.Position[0], m.Position[1], m.Position[2])
 	// Combine the transformations: ModelMatrix = translation * rotation * scale
 	m.ModelMatrix = translationMatrix.Mul4(rotationMatrix).Mul4(scaleMatrix)
-	m.CalculateBoundingSphere()
+	// If the model is instanced, update the instance matrices automatically
+	if m.IsInstanced && len(m.InstanceModelMatrices) > 0 {
+		for i := 0; i < m.InstanceCount; i++ {
+			instancePosition := m.InstanceModelMatrices[i].Col(3).Vec3() // Retrieve the instance position
+			instanceMatrix := mgl32.Translate3D(instancePosition.X(), instancePosition.Y(), instancePosition.Z()).
+				Mul4(rotationMatrix).Mul4(scaleMatrix)
+			m.InstanceModelMatrices[i] = instanceMatrix
+		}
+	}
+	if FrustumCullingEnabled {
+		m.CalculateBoundingSphere()
+	}
+}
+
+// CalculateModelMatrix calculates the transformation matrix for a model
+func (m *Model) calculateModelMatrix() {
+	// Start with an identity matrix
+	m.ModelMatrix = mgl32.Ident4()
+
+	// Apply scaling, rotation, and translation in sequence without extra matrix allocations
+	m.ModelMatrix = m.ModelMatrix.Mul4(mgl32.Scale3D(m.Scale.X(), m.Scale.Y(), m.Scale.Z()))
+	m.ModelMatrix = m.ModelMatrix.Mul4(m.Rotation.Mat4())
+	m.ModelMatrix = m.ModelMatrix.Mul4(mgl32.Translate3D(m.Position.X(), m.Position.Y(), m.Position.Z()))
 }
 
 // Aux functions, maybe I need to move them to another package
@@ -202,4 +227,15 @@ func SetDefaultTexture(RendererAPI Render) {
 	}
 
 	DefaultMaterial.TextureID = textureID
+}
+
+func (m *Model) SetInstanceCount(count int) {
+	m.InstanceCount = count
+	m.InstanceModelMatrices = make([]mgl32.Mat4, count)
+}
+
+func (m *Model) SetInstancePosition(index int, position mgl32.Vec3) {
+	if index >= 0 && index < len(m.InstanceModelMatrices) {
+		m.InstanceModelMatrices[index] = mgl32.Translate3D(position.X(), position.Y(), position.Z())
+	}
 }

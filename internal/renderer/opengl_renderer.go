@@ -7,6 +7,7 @@ import (
 	"image/draw"
 	"os"
 	"strings"
+	"unsafe"
 
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
@@ -31,6 +32,8 @@ type OpenGLRenderer struct {
 	fragmentShader       uint32
 	Shader               Shader
 	Models               []*Model
+	instanceVBO          uint32 // Buffer for instance model matrices
+
 }
 
 func (rend *OpenGLRenderer) Init(width, height int32, _ *glfw.Window) {
@@ -42,6 +45,8 @@ func (rend *OpenGLRenderer) Init(width, height int32, _ *glfw.Window) {
 	if Debug {
 		gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 	}
+	// Generate buffer for instanced data (like model matrices)
+	gl.GenBuffers(1, &rend.instanceVBO)
 
 	FrustumCullingEnabled = false
 	FaceCullingEnabled = false
@@ -86,7 +91,7 @@ func (rend *OpenGLRenderer) AddModel(model *Model) {
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo)
 	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(model.Faces)*4, gl.Ptr(model.Faces), gl.STATIC_DRAW)
 
-	stride := int32((3 + 2 + 3) * 4)
+	stride := int32((8) * 4)
 	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, stride, gl.PtrOffset(0))
 	gl.EnableVertexAttribArray(0)
 
@@ -95,6 +100,19 @@ func (rend *OpenGLRenderer) AddModel(model *Model) {
 
 	gl.VertexAttribPointer(2, 3, gl.FLOAT, false, stride, gl.PtrOffset(5*4))
 	gl.EnableVertexAttribArray(2)
+
+	if model.IsInstanced && len(model.InstanceModelMatrices) > 0 {
+		// Allocate VBO for instanced model matrices (use rend.instanceVBO instead of model.InstanceVBO)
+		gl.BindBuffer(gl.ARRAY_BUFFER, rend.instanceVBO)
+		gl.BufferData(gl.ARRAY_BUFFER, len(model.InstanceModelMatrices)*int(unsafe.Sizeof(mgl32.Mat4{})), gl.Ptr(model.InstanceModelMatrices), gl.DYNAMIC_DRAW)
+
+		// Set attribute pointers for the 4 columns of the model matrix (location 3, 4, 5, 6)
+		for i := 0; i < 4; i++ {
+			gl.EnableVertexAttribArray(3 + uint32(i))
+			gl.VertexAttribPointer(3+uint32(i), 4, gl.FLOAT, false, int32(unsafe.Sizeof(mgl32.Mat4{})), unsafe.Pointer(uintptr(i*16)))
+			gl.VertexAttribDivisor(3+uint32(i), 1) // One matrix per instance
+		}
+	}
 
 	model.VAO = vao
 	model.VBO = vbo
@@ -112,6 +130,16 @@ func (rend *OpenGLRenderer) RemoveModel(model *Model) {
 			break
 		}
 	}
+}
+
+func (model *Model) RemoveModelInstance(index int) {
+	if index >= len(model.InstanceModelMatrices) {
+		return // Index out of range
+	}
+
+	// Mark instance as inactive by removing its matrix
+	model.InstanceModelMatrices = append(model.InstanceModelMatrices[:index], model.InstanceModelMatrices[index+1:]...)
+	model.InstanceCount-- // Reduce instance count
 }
 
 func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
@@ -146,6 +174,7 @@ func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
 	}
 
 	modLen := len(rend.Models)
+
 	for i := 0; i < modLen; i++ {
 		// Skip rendering if the model is outside the frustum
 		if FrustumCullingEnabled && !frustum.IntersectsSphere(rend.Models[i].BoundingSphereCenter, rend.Models[i].BoundingSphereRadius) {
@@ -154,7 +183,7 @@ func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
 
 		if rend.Models[i].IsDirty {
 			// Recalculate the model matrix only if necessary
-			rend.Models[i].ModelMatrix = CalculateModelMatrix(*rend.Models[i])
+			rend.Models[i].calculateModelMatrix()
 			rend.Models[i].IsDirty = false
 		}
 		// Upload the model matrix to the GPU
@@ -175,7 +204,16 @@ func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
 		gl.Uniform1i(rend.textureUniform, 0)
 		gl.BindVertexArray(rend.Models[i].VAO)
 
-		gl.DrawElements(gl.TRIANGLES, int32(len(rend.Models[i].Faces)), gl.UNSIGNED_INT, nil)
+		if rend.Models[i].IsInstanced && len(rend.Models[i].InstanceModelMatrices) > 0 {
+			rend.UpdateInstanceMatrices(rend.Models[i]) // Automatically update instance matrices for rendering(rend.instanceModelMatrices)
+			rend.Shader.SetInt("isInstanced", 1)        // Instanced rendering
+			gl.DrawElementsInstanced(gl.TRIANGLES, int32(len(rend.Models[i].Faces)), gl.UNSIGNED_INT, nil, int32(rend.Models[i].InstanceCount))
+		} else {
+			// Regular draw
+			gl.DrawElements(gl.TRIANGLES, int32(len(rend.Models[i].Faces)), gl.UNSIGNED_INT, nil)
+			rend.Shader.SetInt("isInstanced", 0) // Regular rendering
+		}
+
 		gl.BindVertexArray(0)
 	}
 	gl.Disable(gl.DEPTH_TEST)
@@ -303,23 +341,17 @@ func genShaderProgram(vertexShader, fragmentShader uint32) uint32 {
 	return program
 }
 
-// CalculateModelMatrix calculates the transformation matrix for a model
-func CalculateModelMatrix(model Model) mgl32.Mat4 {
-	// Start with an identity matrix
-	modelMatrix := mgl32.Ident4()
-
-	// Apply scaling, rotation, and translation in sequence without extra matrix allocations
-	modelMatrix = modelMatrix.Mul4(mgl32.Scale3D(model.Scale.X(), model.Scale.Y(), model.Scale.Z()))
-	modelMatrix = modelMatrix.Mul4(model.Rotation.Mat4())
-	modelMatrix = modelMatrix.Mul4(mgl32.Translate3D(model.Position.X(), model.Position.Y(), model.Position.Z()))
-
-	return modelMatrix
-}
-
 func CreateLight() *Light {
 	return &Light{
-		Position:  mgl32.Vec3{0.0, 300.0, 0.0}, // Example position
-		Color:     mgl32.Vec3{1.0, 1.0, 1.0},   // White light
-		Intensity: 1.0,                         // Full intensity
+		Position:  mgl32.Vec3{0.0, 1500.0, 0.0}, // Example position
+		Color:     mgl32.Vec3{1.0, 1.0, 1.0},    // White light
+		Intensity: 1.0,                          // Full intensity
+	}
+}
+
+func (rend *OpenGLRenderer) UpdateInstanceMatrices(model *Model) {
+	if len(model.InstanceModelMatrices) > 0 {
+		gl.BindBuffer(gl.ARRAY_BUFFER, rend.instanceVBO)
+		gl.BufferData(gl.ARRAY_BUFFER, len(model.InstanceModelMatrices)*int(unsafe.Sizeof(mgl32.Mat4{})), gl.Ptr(model.InstanceModelMatrices), gl.DYNAMIC_DRAW)
 	}
 }

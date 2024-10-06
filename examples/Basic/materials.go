@@ -22,7 +22,7 @@ func NewMaterialExampleBehaviour(engine *engine.Gopher) {
 }
 
 func main() {
-	engine := engine.NewGopher(engine.VULKAN)
+	engine := engine.NewGopher(engine.OPENGL)
 
 	NewMaterialExampleBehaviour(engine)
 	engine.Render(768, 50)

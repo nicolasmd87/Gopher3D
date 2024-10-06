@@ -36,23 +36,32 @@ func (shader *Shader) SetInt(name string, value int32) {
 }
 
 var vertexShaderSource = `#version 330 core
+
 layout(location = 0) in vec3 inPosition; // Vertex position
 layout(location = 1) in vec2 inTexCoord; // Texture Coordinate
 layout(location = 2) in vec3 inNormal;   // Vertex normal
+layout(location = 3) in mat4 instanceModel; // Instanced model matrix
 
-uniform mat4 model;
+uniform bool isInstanced; // Flag to differentiate instanced vs non-instanced rendering
+uniform mat4 model;       // Regular model matrix
 uniform mat4 viewProjection;
-out vec2 fragTexCoord;   // Pass to fragment shader
-out vec3 Normal;         // Pass normal to fragment shader
-out vec3 FragPos;        // Pass position to fragment shader
+
+out vec2 fragTexCoord;    // Pass to fragment shader
+out vec3 Normal;          // Pass normal to fragment shader
+out vec3 FragPos;         // Pass position to fragment shader
 
 void main() {
-    FragPos = vec3(model * vec4(inPosition, 1.0));
-    // Vertex Shader
-    Normal = mat3(model) * inNormal; // Use this if the model matrix has no non-uniform scaling
+    // Decide whether to use instanced or regular model matrix
+    mat4 modelMatrix = isInstanced ? instanceModel : model;
+
+    FragPos = vec3(modelMatrix * vec4(inPosition, 1.0));
+    Normal = mat3(modelMatrix) * inNormal; // Use this if the model matrix has no non-uniform scaling
     fragTexCoord = inTexCoord;
-    gl_Position = viewProjection * model * vec4(inPosition, 1.0);
+
+    // Final vertex position
+    gl_Position = viewProjection * modelMatrix * vec4(inPosition, 1.0);
 }
+
 ` + "\x00"
 
 var fragmentShaderSource = `// Fragment Shader

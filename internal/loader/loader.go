@@ -22,6 +22,24 @@ func LoadObjectWithPath(Path string, recalculateNormals bool) (*renderer.Model, 
 	return model, err
 }
 
+// LoadObjectInstance loads a model with instancing enabled
+func LoadObjectInstance(Path string, recalculateNormals bool, instanceCount int) (*renderer.Model, error) {
+	model, err := LoadModel(Path, recalculateNormals)
+	if err != nil {
+		return nil, err
+	}
+
+	model.IsInstanced = true
+	model.InstanceCount = instanceCount
+	// Pass instance data to renderer instead of modifying the model
+	model.InstanceModelMatrices = make([]mgl32.Mat4, instanceCount)
+	for i := 0; i < instanceCount; i++ {
+		// Initialize with identity matrices, set positions later
+		model.InstanceModelMatrices[i] = mgl32.Ident4()
+	}
+	return model, nil
+}
+
 func LoadObject() *renderer.Model {
 	files, err := os.ReadDir("../obj")
 	if err != nil {
@@ -155,6 +173,7 @@ func LoadModel(filename string, recalculateNormals bool) (*renderer.Model, error
 	model.Position = [3]float32{0, 0, 0}
 	model.Rotation = mgl32.Quat{}
 	model.Scale = [3]float32{1, 1, 1}
+	// TODO: MAYBE NOT NECCESARY
 	model.CalculateBoundingSphere()
 	return model, nil
 }

@@ -218,4 +218,5 @@ func (gopher *Gopher) mouseCallback(w *glfw.Window, xpos, ypos float64) {
 	} else {
 		firstMouse = true
 	}
+
 }

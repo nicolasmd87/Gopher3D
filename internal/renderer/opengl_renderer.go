@@ -7,6 +7,7 @@ import (
 	"image/draw"
 	"os"
 	"strings"
+	"unsafe"
 
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
@@ -34,6 +35,8 @@ type OpenGLRenderer struct {
 	fragmentShader        uint32
 	Shader                Shader
 	Models                []*Model
+	instanceVBO           uint32 // Buffer for instance model matrices
+
 }
 
 func (rend *OpenGLRenderer) Init(width, height int32, _ *glfw.Window) {
@@ -45,9 +48,13 @@ func (rend *OpenGLRenderer) Init(width, height int32, _ *glfw.Window) {
 	if rend.Debug {
 		gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 	}
+	// Generate buffer for instanced data (like model matrices)
+	gl.GenBuffers(1, &rend.instanceVBO)
 
+	// Set default values
 	rend.FrustumCullingEnabled = false
 	rend.FaceCullingEnabled = false
+
 	SetDefaultTexture(rend)
 	gl.Viewport(0, 0, width, height)
 	rend.Shader = InitShader()
@@ -98,6 +105,19 @@ func (rend *OpenGLRenderer) AddModel(model *Model) {
 
 	gl.VertexAttribPointer(2, 3, gl.FLOAT, false, stride, gl.PtrOffset(5*4))
 	gl.EnableVertexAttribArray(2)
+
+	if model.IsInstanced && len(model.InstanceModelMatrices) > 0 {
+		// Allocate VBO for instanced model matrices (use rend.instanceVBO instead of model.InstanceVBO)
+		gl.BindBuffer(gl.ARRAY_BUFFER, rend.instanceVBO)
+		gl.BufferData(gl.ARRAY_BUFFER, len(model.InstanceModelMatrices)*int(unsafe.Sizeof(mgl32.Mat4{})), gl.Ptr(model.InstanceModelMatrices), gl.STATIC_DRAW)
+
+		// Set attribute pointers for the 4 columns of the model matrix (location 3, 4, 5, 6)
+		for i := 0; i < 4; i++ {
+			gl.EnableVertexAttribArray(3 + uint32(i))
+			gl.VertexAttribPointer(3+uint32(i), 4, gl.FLOAT, false, int32(unsafe.Sizeof(mgl32.Mat4{})), unsafe.Pointer(uintptr(i*16)))
+			gl.VertexAttribDivisor(3+uint32(i), 1) // One matrix per instance
+		}
+	}
 
 	model.VAO = vao
 	model.VBO = vbo
@@ -151,6 +171,7 @@ func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
 	}
 
 	modLen := len(rend.Models)
+
 	for i := 0; i < modLen; i++ {
 		// Skip rendering if the model is outside the frustum
 		if rend.FrustumCullingEnabled && !frustum.IntersectsSphere(rend.Models[i].BoundingSphereCenter, rend.Models[i].BoundingSphereRadius) {
@@ -180,7 +201,16 @@ func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
 		gl.Uniform1i(rend.textureUniform, 0)
 		gl.BindVertexArray(rend.Models[i].VAO)
 
-		gl.DrawElements(gl.TRIANGLES, int32(len(rend.Models[i].Faces)), gl.UNSIGNED_INT, nil)
+		if rend.Models[i].IsInstanced && len(rend.Models[i].InstanceModelMatrices) > 0 {
+			rend.UpdateInstanceMatrices(rend.Models[i]) // Automatically update instance matrices for rendering(rend.instanceModelMatrices)
+			rend.Shader.SetInt("isInstanced", 1)        // Instanced rendering
+			gl.DrawElementsInstanced(gl.TRIANGLES, int32(len(rend.Models[i].Faces)), gl.UNSIGNED_INT, nil, int32(rend.Models[i].InstanceCount))
+		} else {
+			// Regular draw
+			gl.DrawElements(gl.TRIANGLES, int32(len(rend.Models[i].Faces)), gl.UNSIGNED_INT, nil)
+			rend.Shader.SetInt("isInstanced", 0) // Regular rendering
+		}
+
 		gl.BindVertexArray(0)
 	}
 	gl.Disable(gl.DEPTH_TEST)
@@ -326,5 +356,18 @@ func CreateLight() *Light {
 		Position:  mgl32.Vec3{0.0, 300.0, 0.0}, // Example position
 		Color:     mgl32.Vec3{1.0, 1.0, 1.0},   // White light
 		Intensity: 1.0,                         // Full intensity
+	}
+}
+
+func (rend *OpenGLRenderer) UpdateInstanceData(instanceModelMatrices []mgl32.Mat4) {
+
+	// Update the instance VBO with new data
+	gl.BindBuffer(gl.ARRAY_BUFFER, rend.instanceVBO)
+	gl.BufferData(gl.ARRAY_BUFFER, len(instanceModelMatrices)*int(unsafe.Sizeof(mgl32.Mat4{})), gl.Ptr(instanceModelMatrices), gl.STATIC_DRAW)
+}
+
+func (rend *OpenGLRenderer) UpdateInstanceMatrices(model *Model) {
+	if len(model.InstanceModelMatrices) > 0 {
+		rend.UpdateInstanceData(model.InstanceModelMatrices) // Ensure this function correctly updates the VBO
 	}
 }

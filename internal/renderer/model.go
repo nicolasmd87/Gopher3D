@@ -25,30 +25,33 @@ var DefaultMaterial = &Material{
 var defaultTextureFS embed.FS
 
 type Model struct {
-	Id                   int
-	Name                 string
-	Position             mgl32.Vec3
-	Scale                mgl32.Vec3
-	Rotation             mgl32.Quat
-	Vertices             []float32
-	Indices              []uint32
-	vertexBuffer         vk.Buffer
-	vertexMemory         vk.DeviceMemory
-	indexBuffer          vk.Buffer
-	indexMemory          vk.DeviceMemory
-	Normals              []float32
-	Faces                []int32
-	TextureCoords        []float32
-	InterleavedData      []float32
-	Material             *Material
-	VAO                  uint32 // Vertex Array Object
-	VBO                  uint32 // Vertex Buffer Object
-	EBO                  uint32 // Element Buffer Object
-	ModelMatrix          mgl32.Mat4
-	BoundingSphereCenter mgl32.Vec3
-	BoundingSphereRadius float32
-	IsDirty              bool
-	IsBatched            bool
+	Id                    int
+	Name                  string
+	Position              mgl32.Vec3
+	Scale                 mgl32.Vec3
+	Rotation              mgl32.Quat
+	Vertices              []float32
+	Indices               []uint32
+	vertexBuffer          vk.Buffer
+	vertexMemory          vk.DeviceMemory
+	indexBuffer           vk.Buffer
+	indexMemory           vk.DeviceMemory
+	Normals               []float32
+	Faces                 []int32
+	TextureCoords         []float32
+	InterleavedData       []float32
+	Material              *Material
+	VAO                   uint32 // Vertex Array Object
+	VBO                   uint32 // Vertex Buffer Object
+	EBO                   uint32 // Element Buffer Object
+	ModelMatrix           mgl32.Mat4
+	BoundingSphereCenter  mgl32.Vec3
+	BoundingSphereRadius  float32
+	IsDirty               bool
+	IsBatched             bool
+	IsInstanced           bool
+	InstanceCount         int
+	InstanceModelMatrices []mgl32.Mat4 // Instance model matrices
 }
 
 type Material struct {
@@ -116,6 +119,7 @@ func (m *Model) CalculateBoundingSphere() {
 	m.BoundingSphereCenter = center
 	m.BoundingSphereRadius = float32(math.Sqrt(float64(maxDistanceSq)))
 }
+
 func (m *Model) updateModelMatrix() {
 	// Matrix multiplication order: scale -> rotate -> translate
 	scaleMatrix := mgl32.Scale3D(m.Scale[0], m.Scale[1], m.Scale[2])

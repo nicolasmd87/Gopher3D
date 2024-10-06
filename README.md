@@ -1,9 +1,11 @@
 
 # Gopher3D - Open-Source 3D Engine
 
-Gopher3D is an open-source 3D game engine developed in Go. The engine currently supports **OpenGL rendering** with instancing capabilities, allowing efficient rendering of large numbers of objects. While the Vulkan implementation has been started, it is **not yet functional**, and will be developed further in future releases.
+Gopher3D is an open-source render engine developed in Go. The engine currently supports **OpenGL rendering** with instancing capabilities, allowing efficient rendering of large numbers of objects. While the Vulkan implementation has been started, it is **not yet functional**, and will be developed further in future releases.
 
 This engine is designed for flexibility, ease of use, and experimentation in creating 3D applications. Examples such as particle simulations are included to demonstrate the engine’s features, although a full physics and particle system implementation is a work in progress.
+
+The engine is still in very early stages
 
 ## Features
 
@@ -12,6 +14,15 @@ This engine is designed for flexibility, ease of use, and experimentation in cre
 - **Basic Lighting**: Currently includes basic light setup (static light sources).
 - **Examples**: Various examples (particles, black hole, basic rendering) are included to showcase how the engine can be used.
 - **Vulkan (In Progress)**: A Vulkan renderer has been started, but it’s not yet functional. Future updates will continue this work.
+
+  ## Not implemented
+
+- **Proper physics**
+- **Collisions**
+- **Multiple materials**
+- **Scenes**
+- **UI**
+- **Vulkan (In Progress)**
 
 ## Getting Started
 

@@ -19,23 +19,21 @@ var currentTextureID uint32 = ^uint32(0) // Initialize with an invalid value
 var frustum Frustum
 
 type OpenGLRenderer struct {
-	FrustumCullingEnabled bool
-	FaceCullingEnabled    bool
-	Debug                 bool
-	modelLoc              int32
-	viewProjLoc           int32
-	lightPosLoc           int32
-	lightColorLoc         int32
-	lightIntensityLoc     int32
-	diffuseColorUniform   int32
-	shininessUniform      int32
-	specularColorUniform  int32
-	textureUniform        int32
-	vertexShader          uint32
-	fragmentShader        uint32
-	Shader                Shader
-	Models                []*Model
-	instanceVBO           uint32 // Buffer for instance model matrices
+	Debug                bool
+	modelLoc             int32
+	viewProjLoc          int32
+	lightPosLoc          int32
+	lightColorLoc        int32
+	lightIntensityLoc    int32
+	diffuseColorUniform  int32
+	shininessUniform     int32
+	specularColorUniform int32
+	textureUniform       int32
+	vertexShader         uint32
+	fragmentShader       uint32
+	Shader               Shader
+	Models               []*Model
+	instanceVBO          uint32 // Buffer for instance model matrices
 
 }
 
@@ -50,10 +48,6 @@ func (rend *OpenGLRenderer) Init(width, height int32, _ *glfw.Window) {
 	}
 	// Generate buffer for instanced data (like model matrices)
 	gl.GenBuffers(1, &rend.instanceVBO)
-
-	// Set default values
-	rend.FrustumCullingEnabled = false
-	rend.FaceCullingEnabled = false
 
 	SetDefaultTexture(rend)
 	gl.Viewport(0, 0, width, height)
@@ -96,7 +90,7 @@ func (rend *OpenGLRenderer) AddModel(model *Model) {
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo)
 	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(model.Faces)*4, gl.Ptr(model.Faces), gl.STATIC_DRAW)
 
-	stride := int32((3 + 2 + 3) * 4)
+	stride := int32((8) * 4)
 	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, stride, gl.PtrOffset(0))
 	gl.EnableVertexAttribArray(0)
 
@@ -109,7 +103,7 @@ func (rend *OpenGLRenderer) AddModel(model *Model) {
 	if model.IsInstanced && len(model.InstanceModelMatrices) > 0 {
 		// Allocate VBO for instanced model matrices (use rend.instanceVBO instead of model.InstanceVBO)
 		gl.BindBuffer(gl.ARRAY_BUFFER, rend.instanceVBO)
-		gl.BufferData(gl.ARRAY_BUFFER, len(model.InstanceModelMatrices)*int(unsafe.Sizeof(mgl32.Mat4{})), gl.Ptr(model.InstanceModelMatrices), gl.STATIC_DRAW)
+		gl.BufferData(gl.ARRAY_BUFFER, len(model.InstanceModelMatrices)*int(unsafe.Sizeof(mgl32.Mat4{})), gl.Ptr(model.InstanceModelMatrices), gl.DYNAMIC_DRAW)
 
 		// Set attribute pointers for the 4 columns of the model matrix (location 3, 4, 5, 6)
 		for i := 0; i < 4; i++ {
@@ -156,7 +150,7 @@ func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
 	}
 
 	// Culling : https://learnopengl.com/Advanced-OpenGL/Face-culling
-	if rend.FaceCullingEnabled {
+	if FaceCullingEnabled {
 		gl.Enable(gl.CULL_FACE)
 		// IF FACES OF THE MODEL ARE RENDERED IN THE WRONG ORDER, TRY SWITCHING THE FOLLOWING LINE TO gl.CCW or we need to make sure the winding of each model is consistent
 		// CCW = Counter ClockWise
@@ -166,7 +160,7 @@ func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
 
 	// Calculate frustum
 	// TODO: Add check to see if camera is dirty(moved)
-	if rend.FrustumCullingEnabled {
+	if FrustumCullingEnabled {
 		frustum = camera.CalculateFrustum()
 	}
 
@@ -174,7 +168,7 @@ func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
 
 	for i := 0; i < modLen; i++ {
 		// Skip rendering if the model is outside the frustum
-		if rend.FrustumCullingEnabled && !frustum.IntersectsSphere(rend.Models[i].BoundingSphereCenter, rend.Models[i].BoundingSphereRadius) {
+		if FrustumCullingEnabled && !frustum.IntersectsSphere(rend.Models[i].BoundingSphereCenter, rend.Models[i].BoundingSphereRadius) {
 			continue
 		}
 
@@ -353,9 +347,9 @@ func CalculateModelMatrix(model Model) mgl32.Mat4 {
 
 func CreateLight() *Light {
 	return &Light{
-		Position:  mgl32.Vec3{0.0, 300.0, 0.0}, // Example position
-		Color:     mgl32.Vec3{1.0, 1.0, 1.0},   // White light
-		Intensity: 1.0,                         // Full intensity
+		Position:  mgl32.Vec3{0.0, 1500.0, 0.0}, // Example position
+		Color:     mgl32.Vec3{1.0, 1.0, 1.0},    // White light
+		Intensity: 1.0,                          // Full intensity
 	}
 }
 
@@ -363,7 +357,7 @@ func (rend *OpenGLRenderer) UpdateInstanceData(instanceModelMatrices []mgl32.Mat
 
 	// Update the instance VBO with new data
 	gl.BindBuffer(gl.ARRAY_BUFFER, rend.instanceVBO)
-	gl.BufferData(gl.ARRAY_BUFFER, len(instanceModelMatrices)*int(unsafe.Sizeof(mgl32.Mat4{})), gl.Ptr(instanceModelMatrices), gl.STATIC_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, len(instanceModelMatrices)*int(unsafe.Sizeof(mgl32.Mat4{})), gl.Ptr(instanceModelMatrices), gl.DYNAMIC_DRAW)
 }
 
 func (rend *OpenGLRenderer) UpdateInstanceMatrices(model *Model) {

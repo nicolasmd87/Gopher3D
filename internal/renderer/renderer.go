@@ -9,6 +9,9 @@ import (
 
 type LightType int
 
+var FrustumCullingEnabled bool = false
+var FaceCullingEnabled bool = false
+
 const (
 	STATIC_LIGHT LightType = iota
 	DYNAMIC_LIGHT

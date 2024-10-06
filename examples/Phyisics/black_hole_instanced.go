@@ -118,7 +118,7 @@ func (bhb *BlackHoleBehaviour) calculateTangentialVelocity(position mgl.Vec3, bl
 
 func (bhb *BlackHoleBehaviour) createParticle(position, velocity mgl.Vec3, color string) *Particle {
 	// Load the model for the particle with instancing enabled
-	m, err := loader.LoadObjectInstance("../resources/obj/Sphere_Low.obj", true, 9000)
+	m, err := loader.LoadObjectInstance("../resources/obj/Sphere_Low.obj", true, 10)
 	if err != nil {
 		panic(err)
 	}

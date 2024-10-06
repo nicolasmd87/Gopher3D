@@ -49,10 +49,10 @@ func (mb *TestBehaviour) Start() {
 
 func (mb *TestBehaviour) Update() {
 	mb.model.SetPosition(mb.model.X(), mb.model.Y()+0.005, mb.model.Z())
-	mb.model.Rotate(2.10, 0, 0)
+	mb.model.Rotate(0.5, 0, 0)
 }
 
 func (mb *TestBehaviour) UpdateFixed() {
 	mb.model.SetPosition(mb.model.X(), mb.model.Y()+0.005, mb.model.Z())
-	mb.model.Rotate(2.10, 0, 0)
+	mb.model.Rotate(0.5, 0, 0)
 }

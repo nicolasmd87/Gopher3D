@@ -89,7 +89,6 @@ func (m *Model) Rotate(angleX, angleY, angleZ float32) {
 // SetPosition sets the position of the model
 func (m *Model) SetPosition(x, y, z float32) {
 	m.Position = mgl32.Vec3{x, y, z}
-	m.CalculateBoundingSphere()
 	m.updateModelMatrix()
 	m.IsDirty = true
 }
@@ -127,7 +126,19 @@ func (m *Model) updateModelMatrix() {
 	translationMatrix := mgl32.Translate3D(m.Position[0], m.Position[1], m.Position[2])
 	// Combine the transformations: ModelMatrix = translation * rotation * scale
 	m.ModelMatrix = translationMatrix.Mul4(rotationMatrix).Mul4(scaleMatrix)
-	m.CalculateBoundingSphere()
+	if m.IsInstanced {
+		// Update instance matrices as well
+		for i := 0; i < m.InstanceCount; i++ {
+			// Assume some logic to calculate instance positions, or use the same position for all
+			instancePosition := m.Position // This should be modified according to your particle system logic
+			translationMatrix := mgl32.Translate3D(instancePosition.X(), instancePosition.Y(), instancePosition.Z())
+			// Update instance matrix
+			m.InstanceModelMatrices[i] = translationMatrix.Mul4(rotationMatrix).Mul4(scaleMatrix)
+		}
+	}
+	if FrustumCullingEnabled {
+		m.CalculateBoundingSphere()
+	}
 }
 
 // Aux functions, maybe I need to move them to another package

@@ -1,5 +1,5 @@
 
-# Gopher3D - Open-Source 3D Engine
+# Gopher3D - Open-Source Render Engine
 
 Gopher3D is an open-source render engine developed in Go. The engine currently supports **OpenGL rendering** with instancing capabilities, allowing efficient rendering of large numbers of objects. While the Vulkan implementation has been started, it is **not yet functional**, and will be developed further in future releases.
 

@@ -18,22 +18,19 @@ var currentTextureID uint32 = ^uint32(0) // Initialize with an invalid value
 var frustum Frustum
 
 type OpenGLRenderer struct {
-	FrustumCullingEnabled bool
-	FaceCullingEnabled    bool
-	Debug                 bool
-	modelLoc              int32
-	viewProjLoc           int32
-	lightPosLoc           int32
-	lightColorLoc         int32
-	lightIntensityLoc     int32
-	diffuseColorUniform   int32
-	shininessUniform      int32
-	specularColorUniform  int32
-	textureUniform        int32
-	vertexShader          uint32
-	fragmentShader        uint32
-	Shader                Shader
-	Models                []*Model
+	modelLoc             int32
+	viewProjLoc          int32
+	lightPosLoc          int32
+	lightColorLoc        int32
+	lightIntensityLoc    int32
+	diffuseColorUniform  int32
+	shininessUniform     int32
+	specularColorUniform int32
+	textureUniform       int32
+	vertexShader         uint32
+	fragmentShader       uint32
+	Shader               Shader
+	Models               []*Model
 }
 
 func (rend *OpenGLRenderer) Init(width, height int32, _ *glfw.Window) {
@@ -42,12 +39,12 @@ func (rend *OpenGLRenderer) Init(width, height int32, _ *glfw.Window) {
 		return
 	}
 
-	if rend.Debug {
+	if Debug {
 		gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 	}
 
-	rend.FrustumCullingEnabled = false
-	rend.FaceCullingEnabled = false
+	FrustumCullingEnabled = false
+	FaceCullingEnabled = false
 	SetDefaultTexture(rend)
 	gl.Viewport(0, 0, width, height)
 	rend.Shader = InitShader()
@@ -118,10 +115,8 @@ func (rend *OpenGLRenderer) RemoveModel(model *Model) {
 }
 
 func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
-
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	gl.Enable(gl.DEPTH_TEST)
-
 	viewProjection := camera.GetViewProjection()
 	gl.UseProgram(rend.Shader.program)
 	gl.UniformMatrix4fv(rend.viewProjLoc, 1, false, &viewProjection[0])
@@ -136,7 +131,7 @@ func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
 	}
 
 	// Culling : https://learnopengl.com/Advanced-OpenGL/Face-culling
-	if rend.FaceCullingEnabled {
+	if FaceCullingEnabled {
 		gl.Enable(gl.CULL_FACE)
 		// IF FACES OF THE MODEL ARE RENDERED IN THE WRONG ORDER, TRY SWITCHING THE FOLLOWING LINE TO gl.CCW or we need to make sure the winding of each model is consistent
 		// CCW = Counter ClockWise
@@ -146,14 +141,14 @@ func (rend *OpenGLRenderer) Render(camera Camera, light *Light) {
 
 	// Calculate frustum
 	// TODO: Add check to see if camera is dirty(moved)
-	if rend.FrustumCullingEnabled {
+	if FrustumCullingEnabled {
 		frustum = camera.CalculateFrustum()
 	}
 
 	modLen := len(rend.Models)
 	for i := 0; i < modLen; i++ {
 		// Skip rendering if the model is outside the frustum
-		if rend.FrustumCullingEnabled && !frustum.IntersectsSphere(rend.Models[i].BoundingSphereCenter, rend.Models[i].BoundingSphereRadius) {
+		if FrustumCullingEnabled && !frustum.IntersectsSphere(rend.Models[i].BoundingSphereCenter, rend.Models[i].BoundingSphereRadius) {
 			continue
 		}
 
@@ -313,10 +308,10 @@ func CalculateModelMatrix(model Model) mgl32.Mat4 {
 	// Start with an identity matrix
 	modelMatrix := mgl32.Ident4()
 
-	// Apply scale, rotation, and translation
+	// Apply scaling, rotation, and translation in sequence without extra matrix allocations
 	modelMatrix = modelMatrix.Mul4(mgl32.Scale3D(model.Scale.X(), model.Scale.Y(), model.Scale.Z()))
-	modelMatrix = modelMatrix.Mul4(mgl32.Translate3D(model.Position.X(), model.Position.Y(), model.Position.Z()))
 	modelMatrix = modelMatrix.Mul4(model.Rotation.Mat4())
+	modelMatrix = modelMatrix.Mul4(mgl32.Translate3D(model.Position.X(), model.Position.Y(), model.Position.Z()))
 
 	return modelMatrix
 }

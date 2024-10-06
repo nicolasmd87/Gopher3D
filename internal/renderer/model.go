@@ -92,6 +92,9 @@ func (m *Model) SetPosition(x, y, z float32) {
 }
 
 func (m *Model) CalculateBoundingSphere() {
+	if !FrustumCullingEnabled {
+		return
+	}
 	var center mgl32.Vec3
 	var maxDistanceSq float32
 

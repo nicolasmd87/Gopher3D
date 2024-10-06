@@ -150,35 +150,15 @@ func (gopher *Gopher) RenderLoop() {
 }
 
 func (gopher *Gopher) SetDebugMode(debug bool) {
-	switch renderer := gopher.rendererAPI.(type) {
-	case *renderer.OpenGLRenderer:
-		renderer.Debug = debug
-	case *renderer.VulkanRenderer:
-		renderer.Debug = debug
-	default:
-		logger.Log.Error("Unknown renderer type")
-	}
+	renderer.Debug = debug
 }
 
 func (gopher *Gopher) SetFrustumCulling(enabled bool) {
-	switch renderer := gopher.rendererAPI.(type) {
-	case *renderer.OpenGLRenderer:
-		renderer.FrustumCullingEnabled = enabled
-	case *renderer.VulkanRenderer:
-		renderer.FrustumCullingEnabled = enabled
-	default:
-		logger.Log.Error("Unknown renderer type")
-	}
+	renderer.FrustumCullingEnabled = enabled
 }
+
 func (gopher *Gopher) SetFaceCulling(enabled bool) {
-	switch renderer := gopher.rendererAPI.(type) {
-	case *renderer.OpenGLRenderer:
-		renderer.FaceCullingEnabled = enabled
-	case *renderer.VulkanRenderer:
-		renderer.FaceCullingEnabled = enabled
-	default:
-		logger.Log.Error("Unknown renderer type")
-	}
+	renderer.FaceCullingEnabled = enabled
 }
 
 func (gopher *Gopher) AddModel(model *renderer.Model) {

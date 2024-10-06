@@ -107,7 +107,7 @@ To contribute:
 
 ![Mars](https://github.com/nicolasmd87/Gopher3D/assets/8224408/09d2a39b-c1cb-4548-87fb-1a877df24453)
 
-![THIS-ezgif com-video-to-gif-converter](https://github.com/user-attachments/assets/2920cd78-bd39-4a47-8add-52cbce3dcad9)
+![Black hole instanciated](https://github.com/user-attachments/assets/2920cd78-bd39-4a47-8add-52cbce3dcad9)
 
 
 

@@ -129,14 +129,13 @@ func (m *Model) updateModelMatrix() {
 	translationMatrix := mgl32.Translate3D(m.Position[0], m.Position[1], m.Position[2])
 	// Combine the transformations: ModelMatrix = translation * rotation * scale
 	m.ModelMatrix = translationMatrix.Mul4(rotationMatrix).Mul4(scaleMatrix)
-	if m.IsInstanced {
-		// Update instance matrices as well
+	// If the model is instanced, update the instance matrices automatically
+	if m.IsInstanced && len(m.InstanceModelMatrices) > 0 {
 		for i := 0; i < m.InstanceCount; i++ {
-			// Assume some logic to calculate instance positions, or use the same position for all
-			instancePosition := m.Position // This should be modified according to your particle system logic
-			translationMatrix := mgl32.Translate3D(instancePosition.X(), instancePosition.Y(), instancePosition.Z())
-			// Update instance matrix
-			m.InstanceModelMatrices[i] = translationMatrix.Mul4(rotationMatrix).Mul4(scaleMatrix)
+			instancePosition := m.InstanceModelMatrices[i].Col(3).Vec3() // Retrieve the instance position
+			instanceMatrix := mgl32.Translate3D(instancePosition.X(), instancePosition.Y(), instancePosition.Z()).
+				Mul4(rotationMatrix).Mul4(scaleMatrix)
+			m.InstanceModelMatrices[i] = instanceMatrix
 		}
 	}
 	if FrustumCullingEnabled {
@@ -228,4 +227,15 @@ func SetDefaultTexture(RendererAPI Render) {
 	}
 
 	DefaultMaterial.TextureID = textureID
+}
+
+func (m *Model) SetInstanceCount(count int) {
+	m.InstanceCount = count
+	m.InstanceModelMatrices = make([]mgl32.Mat4, count)
+}
+
+func (m *Model) SetInstancePosition(index int, position mgl32.Vec3) {
+	if index >= 0 && index < len(m.InstanceModelMatrices) {
+		m.InstanceModelMatrices[index] = mgl32.Translate3D(position.X(), position.Y(), position.Z())
+	}
 }

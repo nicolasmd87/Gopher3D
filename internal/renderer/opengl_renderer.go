@@ -19,10 +19,6 @@ var currentTextureID uint32 = ^uint32(0) // Initialize with an invalid value
 var frustum Frustum
 
 type OpenGLRenderer struct {
-<<<<<<< HEAD
-	Debug                bool
-=======
->>>>>>> origin/main
 	modelLoc             int32
 	viewProjLoc          int32
 	lightPosLoc          int32
@@ -36,11 +32,8 @@ type OpenGLRenderer struct {
 	fragmentShader       uint32
 	Shader               Shader
 	Models               []*Model
-<<<<<<< HEAD
 	instanceVBO          uint32 // Buffer for instance model matrices
 
-=======
->>>>>>> origin/main
 }
 
 func (rend *OpenGLRenderer) Init(width, height int32, _ *glfw.Window) {
@@ -55,11 +48,8 @@ func (rend *OpenGLRenderer) Init(width, height int32, _ *glfw.Window) {
 	// Generate buffer for instanced data (like model matrices)
 	gl.GenBuffers(1, &rend.instanceVBO)
 
-<<<<<<< HEAD
-=======
 	FrustumCullingEnabled = false
 	FaceCullingEnabled = false
->>>>>>> origin/main
 	SetDefaultTexture(rend)
 	gl.Viewport(0, 0, width, height)
 	rend.Shader = InitShader()

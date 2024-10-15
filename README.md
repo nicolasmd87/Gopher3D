@@ -62,7 +62,7 @@ go run ./examples/black_hole_instanced.go
 
 This example demonstrates a particle simulation where particles orbit around a black hole. Instanced rendering is used for performance, and particles that enter the event horizon are removed from the scene.
 
-- **File**: `black_hole_instanced.go`
+- **File**: `black_hole.go`
 - **Description**: Demonstrates particle simulation using instanced rendering and Verlet integration for particle movement.
 
 ### Basic Example

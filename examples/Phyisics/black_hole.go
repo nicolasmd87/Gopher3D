@@ -91,7 +91,7 @@ func (bhb *BlackHoleBehaviour) Start() {
 	if err != nil {
 		panic(err)
 	}
-	redModel.Scale = mgl.Vec3{5, 5, 5}
+	redModel.Scale = mgl.Vec3{1, 1, 1}
 	redModel.SetDiffuseColor(255.0, 0.0, 0.0) // Red
 	bhb.redModel = redModel
 	bhb.engine.AddModel(redModel)

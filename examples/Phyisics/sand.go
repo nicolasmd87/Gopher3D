@@ -45,6 +45,8 @@ type SandSimulation struct {
 	sandModel     *renderer.Model
 	engine        *engine.Gopher
 	forceField    *physics.AttractorForceField // Force field for gravity-like effects
+	lastMousePos  mgl.Vec2                     // Store the last mouse position to detect movement
+	mousePressed  bool                         // Track mouse press state
 }
 
 func NewSandSimulation(engine *engine.Gopher) {
@@ -69,16 +71,16 @@ func (ss *SandSimulation) Start() {
 	ss.engine.Camera.Speed = 200 // Set camera speed to 200
 	ss.engine.Light = renderer.CreateLight()
 	ss.engine.Light.Type = renderer.STATIC_LIGHT
-	ss.engine.Light.Intensity = 0.05                    // Tone down the light intensity even more
-	ss.engine.Light.Position = mgl.Vec3{0, 1500, -1000} // Move the light further away
+	ss.engine.Light.Intensity = 0.03                    // Tone down the light intensity even more
+	ss.engine.Light.Position = mgl.Vec3{0, 2000, -1200} // Move the light further away
 
 	// Load the sand particle model with instancing enabled
-	instances := 100000 // Increased number of particles for denser effect
+	instances := 200000 // More particles for a denser effect
 	sandModel, err := loader.LoadObjectInstance("../resources/obj/Sphere_Low.obj", true, instances)
 	if err != nil {
 		panic(err)
 	}
-	sandModel.Scale = mgl.Vec3{0.2, 0.2, 0.2} // Smaller particles
+	sandModel.Scale = mgl.Vec3{0.1, 0.1, 0.1} // Smaller particles
 	sandModel.SetDiffuseColor(139, 69, 19)    // Dark brown (RGB: 139, 69, 19)
 	ss.sandModel = sandModel
 	ss.engine.AddModel(sandModel)
@@ -108,24 +110,37 @@ func (ss *SandSimulation) Start() {
 	// Set realistic gravitational force (scaled down for simulation)
 	gravity := &math32.Vector3{0, -9.81, 0}
 	ss.forceField = physics.NewAttractorForceField(gravity, 1)
+	ss.lastMousePos = ss.engine.GetMousePosition() // Initialize mouse position
+	ss.mousePressed = false
 }
 
 func (ss *SandSimulation) Update() {
 	dt := float32(0.016) // Time step for updating position
 
-	// Radius and force applied to particles
-	radiusOfInfluence := float32(600.0) // Allow interaction from far away
-	friction := float32(0.98)
-	attractionForce := float32(10.0) // Force to smoothly attract particles toward the mouse
+	// Force applied to particles
+	attractionForce := float32(15.0) // Balanced force for smoother movement
 
 	// Get mouse input for interaction
 	mousePos := ss.engine.GetMousePosition()
 	mousePressed := ss.engine.IsMouseButtonPressed(glfw.MouseButtonLeft)
+	ss.mousePressed = mousePressed
 
 	// Convert the mouse screen position to world coordinates
 	mouseWorldPos := ss.engine.Camera.ScreenToWorld(mousePos, int(ss.engine.Width), int(ss.engine.Height))
 
-	numWorkers := 16 // Increased number of workers to distribute load more efficiently
+	// Adjust attraction force when mouse is clicked
+	if mousePressed {
+		ss.ApplyForcesToParticles(mouseWorldPos, attractionForce, dt)
+	}
+
+	ss.UpdateParticles(dt, 0.95) // friction set to 0.95
+}
+
+func (ss *SandSimulation) ApplyForcesToParticles(mouseWorldPos mgl.Vec3, attractionForce float32, dt float32) {
+	radiusOfInfluence := float32(300.0)
+
+	// Split the particle processing across workers
+	numWorkers := 16
 	batchSize := len(ss.sandParticles) / numWorkers
 
 	var wg sync.WaitGroup
@@ -143,25 +158,45 @@ func (ss *SandSimulation) Update() {
 					continue
 				}
 
-				// Apply gravity to each particle
+				// Apply force only within radius
+				if p.position.Sub(mouseWorldPos).Len() < radiusOfInfluence {
+					p.grabbed = true
+					// Apply smoother force to move toward the mouse's world position
+					direction := mouseWorldPos.Sub(p.position).Normalize()
+					forceToMouse := direction.Mul(attractionForce * dt)
+					p.velocity = p.velocity.Add(forceToMouse)
+				}
+			}
+		}(w * batchSize)
+	}
+	wg.Wait()
+}
+
+func (ss *SandSimulation) UpdateParticles(dt float32, friction float32) {
+	numWorkers := 16
+	batchSize := len(ss.sandParticles) / numWorkers
+
+	var wg sync.WaitGroup
+	for w := 0; w < numWorkers; w++ {
+		wg.Add(1)
+		go func(start int) {
+			defer wg.Done()
+			end := start + batchSize
+			if end > len(ss.sandParticles) {
+				end = len(ss.sandParticles)
+			}
+			for i := start; i < end; i++ {
+				p := ss.sandParticles[i]
+				if !p.active {
+					continue
+				}
+
+				// Apply gravity to each particle to ensure they fall
 				gravity := mgl.Vec3{0, -9.81, 0}
 				p.velocity = p.velocity.Add(gravity.Mul(dt))
 
-				// Apply attraction force to particles within the radius
-				if mousePressed && p.position.Sub(mouseWorldPos).Len() < radiusOfInfluence {
-					p.grabbed = true
-					// Attract the particle toward the mouse position
-					direction := mouseWorldPos.Sub(p.position).Normalize()
-					p.velocity = p.velocity.Add(direction.Mul(attractionForce * dt))
-				} else if p.grabbed && !mousePressed {
-					// Release the particle when the mouse is unclicked
-					p.grabbed = false
-				}
-
 				// Update position based on velocity
-				if !p.grabbed {
-					p.position = p.position.Add(p.velocity.Mul(dt))
-				}
+				p.position = p.position.Add(p.velocity.Mul(dt))
 
 				// Check for collisions with the floor at y = 0
 				if p.position.Y() <= 0 {
@@ -176,13 +211,6 @@ func (ss *SandSimulation) Update() {
 		}(w * batchSize)
 	}
 	wg.Wait()
-
-	// No more grabbing once the mouse is released
-	if !mousePressed {
-		for i := range ss.sandParticles {
-			ss.sandParticles[i].grabbed = false
-		}
-	}
 }
 
 func (ss *SandSimulation) UpdateFixed() {
